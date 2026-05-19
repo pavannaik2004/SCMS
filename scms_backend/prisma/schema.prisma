@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  googleId     String    @unique
+  name         String
+  email        String    @unique
+  picture      String?
+  role         String    @default("ROLE_USER")
+  zoneId       String?
+  departmentId String?
+  fcmToken     String?
+  isApproved   Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastLogin    DateTime?
+  complaints   Complaint[]
+
+  @@map("users")
+}
+
+model Complaint {
+  id                 String    @id @default(uuid())
+  complaintNumber    String    @unique
+  title              String
+  description        String
+  location           String
+  gpsLatitude        Float?
+  gpsLongitude       Float?
+  gpsPlaceName       String?
+  categoryId         String
+  departmentId       String
+  severity           String
+  status             String    @default("PENDING_SR_REVIEW")
+  tags               String[]
+  submittedById      String
+  assignedToId       String?
+  reviewedBySrId     String?
+  srRejectionCause   String?
+  isGrammarCorrected Boolean   @default(false)
+  isAiCategorized    Boolean   @default(false)
+  aiConfidenceScore  Float?
+  duplicateGroupId   String?
+  slaDeadline        DateTime?
+  isSlaBreached      Boolean   @default(false)
+  rating             Float?
+  ratingComment      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  submittedBy        User      @relation(fields: [submittedById], references: [id])
+  mediaItems         MediaItem[]
+  updates            ComplaintUpdate[]
+
+  @@map("complaints")
+}
+
+model MediaItem {
+  id            String    @id @default(uuid())
+  complaintId   String
+  url           String
+  mediaType     String
+  thumbnailUrl  String?
+  gpsLatitude   Float
+  gpsLongitude  Float
+  gpsPlaceName  String
+  capturedAt    DateTime
+  isWatermarked Boolean   @default(false)
+  fileSizeBytes Int
+  complaint     Complaint @relation(fields: [complaintId], references: [id])
+
+  @@map("media_items")
+}
+
+model ComplaintUpdate {
+  id             String    @id @default(uuid())
+  complaintId    String
+  updatedById    String
+  updatedByName  String
+  updatedByRole  String
+  previousStatus String
+  newStatus      String
+  notes          String?
+  timestamp      DateTime  @default(now())
+  complaint      Complaint @relation(fields: [complaintId], references: [id])
+
+  @@map("complaint_updates")
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String   @unique
+  headName    String?
+  createdAt   DateTime @default(now())
+
+  @@map("departments")
+}
+
+model Category {
+  id                  String   @id @default(uuid())
+  name                String   @unique
+  iconName            String?
+  defaultDepartmentId String
+  createdAt           DateTime @default(now())
+
+  @@map("categories")
+}
+
+model Zone {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@map("zones")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("tags")
+}
+
+model AllowedDomain {
+  id          String   @id @default(uuid())
+  domain      String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@map("allowed_domains")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}

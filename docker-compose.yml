@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: scms_user
+      POSTGRES_PASSWORD: scms_pass
+      POSTGRES_DB: scms_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./scms_backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    env_file: ./scms_backend/.env
+    volumes:
+      - ./scms_backend:/app
+      - /app/node_modules
+
+  ai_service:
+    build: ./scms_ai_service
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    env_file: ./scms_ai_service/.env
+    volumes:
+      - ./scms_ai_service:/app
+
+volumes:
+  pgdata:

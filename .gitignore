@@ -1,0 +1,12 @@
+**/.env
+**/node_modules/
+**/__pycache__/
+**/venv/
+**/build/
+**/.dart_tool/
+scms_backend/firebase-service-account.json
+*.apk
+*.aab
+.idea/
+.vscode/
+*.iml
