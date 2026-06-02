@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,12 +11,23 @@ import 'data/datasources/local/auth_local_datasource.dart';
 import 'data/datasources/local/complaint_local_datasource.dart';
 import 'data/datasources/remote/auth_remote_datasource.dart';
 import 'data/datasources/remote/complaint_remote_datasource.dart';
+import 'data/datasources/remote/sr_review_remote_datasource.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/complaint_repository.dart';
+import 'data/repositories/sr_review_repository.dart';
+import 'domain/usecases/get_analytics_usecase.dart';
+import 'domain/usecases/sr_approve_complaint_usecase.dart';
+import 'domain/usecases/sr_reject_complaint_usecase.dart';
+import 'firebase_options.dart';
+import 'presentation/bloc/analytics/analytics_cubit.dart';
 import 'presentation/bloc/auth/auth_bloc.dart';
 import 'presentation/bloc/auth/auth_event.dart';
 import 'presentation/bloc/complaint/complaint_bloc.dart';
+import 'presentation/bloc/sr_review/sr_review_bloc.dart';
 import 'presentation/bloc/submit_complaint/submit_complaint_cubit.dart';
+import 'services/notification_service.dart';
+
+final _navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,9 +39,11 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(ComplaintDraftAdapter());
 
-  // TODO: Prabhava — Initialize Firebase here
-  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // await NotificationService.initialize();
+  // Initialize Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize notification service (FCM + local notifications)
+  await NotificationService.instance.initialize(navigatorKey: _navigatorKey);
 
   // Core services
   final dioClient = DioClient();
@@ -40,6 +54,7 @@ void main() async {
   final authLocal = AuthLocalDataSource();
   final complaintRemote = ComplaintRemoteDataSource(dioClient: dioClient);
   final complaintLocal = ComplaintLocalDataSource();
+  final srReviewRemote = SrReviewRemoteDataSource(dioClient: dioClient);
 
   // Repositories
   final authRepo = AuthRepository(
@@ -52,6 +67,15 @@ void main() async {
     localDataSource: complaintLocal,
     networkInfo: networkInfo,
   );
+  final srReviewRepo = SrReviewRepository(
+    remoteDataSource: srReviewRemote,
+    networkInfo: networkInfo,
+  );
+
+  // Use-cases (Prabhava)
+  final srApproveUseCase = SrApproveComplaintUseCase(repository: srReviewRepo);
+  final srRejectUseCase = SrRejectComplaintUseCase(repository: srReviewRepo);
+  final getAnalyticsUseCase = GetAnalyticsUseCase(repository: complaintRepo);
 
   runApp(
     MultiBlocProvider(
@@ -65,9 +89,20 @@ void main() async {
         BlocProvider<SubmitComplaintCubit>(
           create: (_) => SubmitComplaintCubit(repository: complaintRepo),
         ),
-        // TODO: Prabhava — Add AnalyticsCubit and SrReviewBloc here
+        // Prabhava — SR review workflow
+        BlocProvider<SrReviewBloc>(
+          create: (_) => SrReviewBloc(
+            repository: srReviewRepo,
+            approveUseCase: srApproveUseCase,
+            rejectUseCase: srRejectUseCase,
+          ),
+        ),
+        // Prabhava — Analytics dashboard
+        BlocProvider<AnalyticsCubit>(
+          create: (_) => AnalyticsCubit(getAnalyticsUseCase: getAnalyticsUseCase),
+        ),
       ],
-      child: const ScmsApp(),
+      child: ScmsApp(navigatorKey: _navigatorKey),
     ),
   );
 }

@@ -16,103 +16,93 @@ import 'presentation/pages/complaint/submit_complaint_page.dart';
 import 'presentation/pages/complaint/complaint_detail_page.dart';
 import 'presentation/pages/complaint/duplicate_complaints_page.dart';
 import 'presentation/pages/complaint/rating_page.dart';
-// TODO: Prabhava — import staff, sr, admin, settings pages here
+import 'presentation/pages/route_helpers.dart';
 
 class ScmsApp extends StatelessWidget {
-  const ScmsApp({super.key});
+  const ScmsApp({super.key, this.navigatorKey});
+
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   @override
   Widget build(BuildContext context) {
+    final router = _buildRouter(navigatorKey);
     return MaterialApp.router(
       title: 'SCMS',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
-      routerConfig: _router,
+      routerConfig: router,
     );
   }
 
-  static final GoRouter _router = GoRouter(
-    initialLocation: Routes.splash,
-    redirect: (context, state) {
-      final authState = context.read<AuthBloc>().state;
-      final isLoggedIn = authState is AuthAuthenticated;
+  static GoRouter _buildRouter(GlobalKey<NavigatorState>? navigatorKey) {
+    return GoRouter(
+      navigatorKey: navigatorKey,
+      initialLocation: Routes.splash,
+      redirect: (context, state) {
+        final authState = context.read<AuthBloc>().state;
+        final isLoggedIn = authState is AuthAuthenticated;
 
-      final authPages = {
-        Routes.splash,
-        Routes.login,
-        Routes.onboarding,
-      };
-      final isOnAuthPage = authPages.contains(state.matchedLocation);
+        final authPages = {
+          Routes.splash,
+          Routes.login,
+          Routes.onboarding,
+        };
+        final isOnAuthPage = authPages.contains(state.matchedLocation);
 
-      if (!isLoggedIn && !isOnAuthPage) return Routes.login;
-      if (isLoggedIn && isOnAuthPage) {
-        return _getRoleHome(authState.user.role);
-      }
-      return null;
-    },
-    routes: [
-      GoRoute(
-        path: Routes.splash,
-        builder: (context, state) => const SplashPage(),
-      ),
-      GoRoute(
-        path: Routes.onboarding,
-        builder: (context, state) => const OnboardingPage(),
-      ),
-      GoRoute(
-        path: Routes.login,
-        builder: (context, state) => const LoginPage(),
-      ),
-      GoRoute(
-        path: Routes.userHome,
-        builder: (context, state) => const HomePage(),
-      ),
-      GoRoute(
-        path: Routes.submitComplaint,
-        builder: (context, state) => const SubmitComplaintPage(),
-      ),
-      GoRoute(
-        path: Routes.complaintDetail,
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return ComplaintDetailPage(complaintId: id);
-        },
-      ),
-      GoRoute(
-        path: Routes.duplicateComplaints,
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return DuplicateComplaintsPage(complaintId: id);
-        },
-      ),
-      GoRoute(
-        path: Routes.ratingPage,
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return RatingPage(complaintId: id);
-        },
-      ),
-      GoRoute(
-        path: Routes.settings,
-        builder: (context, state) => const Placeholder(), // TODO: Prabhava — SettingsPage
-      ),
-      // TODO: Prabhava — Add staff, sr, admin routes here
-      GoRoute(
-        path: Routes.staffHome,
-        builder: (context, state) => const Placeholder(), // TODO: Prabhava
-      ),
-      GoRoute(
-        path: Routes.srHome,
-        builder: (context, state) => const Placeholder(), // TODO: Prabhava
-      ),
-      GoRoute(
-        path: Routes.adminHome,
-        builder: (context, state) => const Placeholder(), // TODO: Prabhava
-      ),
-    ],
-  );
+        if (!isLoggedIn && !isOnAuthPage) return Routes.login;
+        if (isLoggedIn && isOnAuthPage) {
+          return _getRoleHome(authState.user.role);
+        }
+        return null;
+      },
+      routes: [
+        GoRoute(
+          path: Routes.splash,
+          builder: (context, state) => const SplashPage(),
+        ),
+        GoRoute(
+          path: Routes.onboarding,
+          builder: (context, state) => const OnboardingPage(),
+        ),
+        GoRoute(
+          path: Routes.login,
+          builder: (context, state) => const LoginPage(),
+        ),
+        GoRoute(
+          path: Routes.userHome,
+          builder: (context, state) => const HomePage(),
+        ),
+        GoRoute(
+          path: Routes.submitComplaint,
+          builder: (context, state) => const SubmitComplaintPage(),
+        ),
+        GoRoute(
+          path: Routes.complaintDetail,
+          builder: (context, state) {
+            final id = state.pathParameters['id']!;
+            return ComplaintDetailPage(complaintId: id);
+          },
+        ),
+        GoRoute(
+          path: Routes.duplicateComplaints,
+          builder: (context, state) {
+            final id = state.pathParameters['id']!;
+            return DuplicateComplaintsPage(complaintId: id);
+          },
+        ),
+        GoRoute(
+          path: Routes.ratingPage,
+          builder: (context, state) {
+            final id = state.pathParameters['id']!;
+            return RatingPage(complaintId: id);
+          },
+        ),
+        ...prabhavaRoutes,
+      ],
+    );
+  }
 
   static String _getRoleHome(String role) {
     switch (role) {
