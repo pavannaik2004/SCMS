@@ -1,6 +1,5 @@
-// File generated from google-services.json (scms-campus-app).
+// File generated from google-services.json (scms-campus-app, updated with OAuth client).
 // Re-generate by running: flutterfire configure --project=scms-campus-app
-// or update values manually if firebase project settings change.
 
 // ignore_for_file: type=lint
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
@@ -36,5 +35,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '182336575222',
     projectId: 'scms-campus-app',
     storageBucket: 'scms-campus-app.firebasestorage.app',
+    androidClientId: '182336575222-252rq8mp7br1178te3ugao4radr2onnv.apps.googleusercontent.com',
   );
 }

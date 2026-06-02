@@ -12,7 +12,12 @@
           "package_name": "com.scms.scms_flutter"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "182336575222-252rq8mp7br1178te3ugao4radr2onnv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDf1H5JHbPKW5KzW76aoIvxoMi1KKGsrRQ"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "182336575222-252rq8mp7br1178te3ugao4radr2onnv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
