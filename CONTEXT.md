@@ -44,7 +44,7 @@ Flutter App (scms_flutter/)    →  Node.js API (scms_backend/:3000)  →  Pytho
 |---|---|---|---|
 | **Pavan** | Flutter: Foundation + Core + Data + Widgets + Student Screens + Integration | `main` | ✅ All Flutter integration DONE |
 | **Prabhava** | Flutter: Staff + SR + Admin + Settings + Notifications | `prabhava/staff-sr-admin` | ✅ **MERGED to main** |
-| **Prem** | Node.js backend: All routes, auth, SLA, FCM | `prem/nodejs-backend` | 🟢 **CAN START NOW** |
+| **Prem** | Node.js backend: All routes, auth, SLA, FCM | `prem/nodejs-backend` | ✅ **COMPLETE** |
 | **Pramath** | Python AI: FastAPI, Gemini, embeddings, duplicate detection | `pramath/ai-service` | ✅ All 4 endpoints DONE |
 
 ---
@@ -216,9 +216,9 @@ Flutter App (scms_flutter/)    →  Node.js API (scms_backend/:3000)  →  Pytho
 ---
 
 ### Prem — Node.js Backend
-**Status: 🟢 READY TO START**
+**Status: ✅ COMPLETE**
 
-All placeholder files exist in `scms_backend/`. `package.json` and `prisma/schema.prisma` are fully populated.
+All routes, auth handlers, upload handlers, SLA/SR scheduler crons, and seeding logic have been successfully implemented, database migrations run, and local postgres connectivity verified.
 
 **Start immediately with:**
 1. `cd scms_backend && npm install`
