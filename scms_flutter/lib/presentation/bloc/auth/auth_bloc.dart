@@ -13,6 +13,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         super(AuthInitial()) {
     on<AppStarted>(_onAppStarted);
     on<GoogleSignInRequested>(_onGoogleSignIn);
+    on<MockSignInRequested>(_onMockSignIn);
     on<LogoutRequested>(_onLogout);
   }
 
@@ -48,6 +49,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthFailure(message: e.message));
     } catch (e) {
       emit(AuthFailure(message: 'Sign-in failed. Please try again.'));
+    }
+  }
+
+  Future<void> _onMockSignIn(MockSignInRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final user = await _authRepository.signInWithMock(event.role);
+      await _authRepository.setOnboardingComplete();
+      emit(AuthAuthenticated(user: user));
+    } catch (e) {
+      emit(AuthFailure(message: 'Mock sign-in failed: $e'));
     }
   }
 

@@ -16,7 +16,13 @@ class NotificationService {
 
 	static final NotificationService instance = NotificationService._();
 
-	final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+	FirebaseMessaging? get _messaging {
+		try {
+			return FirebaseMessaging.instance;
+		} catch (_) {
+			return null;
+		}
+	}
 	final FlutterLocalNotificationsPlugin _localNotifications =
 			FlutterLocalNotificationsPlugin();
 
@@ -27,53 +33,76 @@ class NotificationService {
 		if (_initialized) return;
 		_initialized = true;
 
-		await _messaging.requestPermission();
+		final messaging = _messaging;
+		if (messaging == null) {
+			debugPrint('Firebase Messaging is not supported on this platform.');
+			_initLocalNotifications(navigatorKey);
+			return;
+		}
 
-		const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-		const iosSettings = DarwinInitializationSettings();
-		const initSettings = InitializationSettings(
-			android: androidSettings,
-			iOS: iosSettings,
-		);
+		try {
+			await messaging.requestPermission();
+			await _initLocalNotifications(navigatorKey);
+			await messaging.setForegroundNotificationPresentationOptions(
+				alert: true,
+				badge: true,
+				sound: true,
+			);
 
-		await _localNotifications.initialize(
-			initSettings,
-			onDidReceiveNotificationResponse: (response) {
-				final payload = response.payload;
-				if (payload != null) {
-					_handlePayloadTap(payload, navigatorKey);
-				}
-			},
-		);
+			await _syncFcmToken();
+			messaging.onTokenRefresh.listen(_sendTokenToServer);
 
-		await _messaging.setForegroundNotificationPresentationOptions(
-			alert: true,
-			badge: true,
-			sound: true,
-		);
+			FirebaseMessaging.onMessage.listen((message) {
+				_showInAppBanner(message, navigatorKey);
+				_showLocalNotification(message);
+			});
 
-		await _syncFcmToken();
-		_messaging.onTokenRefresh.listen(_sendTokenToServer);
+			FirebaseMessaging.onMessageOpenedApp.listen(
+				(message) => _handleMessageTap(message, navigatorKey),
+			);
 
-		FirebaseMessaging.onMessage.listen((message) {
-			_showInAppBanner(message, navigatorKey);
-			_showLocalNotification(message);
-		});
+			final initialMessage = await messaging.getInitialMessage();
+			if (initialMessage != null) {
+				_handleMessageTap(initialMessage, navigatorKey);
+			}
+		} catch (e) {
+			debugPrint('Error initializing Firebase Messaging: $e');
+		}
+	}
 
-		FirebaseMessaging.onMessageOpenedApp.listen(
-			(message) => _handleMessageTap(message, navigatorKey),
-		);
+	Future<void> _initLocalNotifications(GlobalKey<NavigatorState>? navigatorKey) async {
+		try {
+			const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+			const iosSettings = DarwinInitializationSettings();
+			const initSettings = InitializationSettings(
+				android: androidSettings,
+				iOS: iosSettings,
+			);
 
-		final initialMessage = await _messaging.getInitialMessage();
-		if (initialMessage != null) {
-			_handleMessageTap(initialMessage, navigatorKey);
+			await _localNotifications.initialize(
+				initSettings,
+				onDidReceiveNotificationResponse: (response) {
+					final payload = response.payload;
+					if (payload != null) {
+						_handlePayloadTap(payload, navigatorKey);
+					}
+				},
+			);
+		} catch (e) {
+			debugPrint('Error initializing local notifications: $e');
 		}
 	}
 
 	Future<void> _syncFcmToken() async {
-		final token = await _messaging.getToken();
-		if (token == null) return;
-		await _sendTokenToServer(token);
+		final messaging = _messaging;
+		if (messaging == null) return;
+		try {
+			final token = await messaging.getToken();
+			if (token == null) return;
+			await _sendTokenToServer(token);
+		} catch (e) {
+			debugPrint('Error syncing FCM token: $e');
+		}
 	}
 
 	Future<void> _sendTokenToServer(String token) async {

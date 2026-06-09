@@ -40,6 +40,22 @@ class AuthRepository {
     }
   }
 
+  /// Sign in with mock user (bypass for development/web preview)
+  Future<UserModel> signInWithMock(String role) async {
+    final user = UserModel(
+      id: 'mock_${role.toLowerCase()}',
+      name: 'Demo ${role.replaceAll('ROLE_', '')}',
+      email: 'demo.${role.replaceAll('ROLE_', '').toLowerCase()}@rvce.edu.in',
+      role: role,
+      departmentId: 'dept_mca',
+      departmentName: 'MCA Department',
+      createdAt: DateTime.now(),
+    );
+    await _localDataSource.saveTokens('mock_access_token', 'mock_refresh_token');
+    await _localDataSource.saveUser(user);
+    return user;
+  }
+
   /// Check if user is already authenticated (app start)
   Future<UserModel?> checkAuthStatus() async {
     final hasToken = await _localDataSource.hasToken();

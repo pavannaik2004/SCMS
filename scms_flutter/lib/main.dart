@@ -40,10 +40,18 @@ void main() async {
   Hive.registerAdapter(ComplaintDraftAdapter());
 
   // Initialize Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (e) {
+    debugPrint('Firebase initialization skipped or failed: $e');
+  }
 
   // Initialize notification service (FCM + local notifications)
-  await NotificationService.instance.initialize(navigatorKey: _navigatorKey);
+  try {
+    await NotificationService.instance.initialize(navigatorKey: _navigatorKey);
+  } catch (e) {
+    debugPrint('Notification service initialization failed: $e');
+  }
 
   // Core services
   final dioClient = DioClient();

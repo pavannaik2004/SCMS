@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import '../../../core/constants/api_constants.dart';
 import '../../../core/errors/exceptions.dart';
 import '../../../core/network/dio_client.dart';
@@ -38,7 +40,8 @@ class AuthRemoteDataSource {
 
   AuthRemoteDataSource({required DioClient dioClient}) : _dioClient = dioClient {
     _googleSignIn = GoogleSignIn(
-      serverClientId: dotenv.env['GOOGLE_SERVER_CLIENT_ID'],
+      clientId: kIsWeb ? dotenv.env['GOOGLE_SERVER_CLIENT_ID'] : null,
+      serverClientId: kIsWeb ? null : dotenv.env['GOOGLE_SERVER_CLIENT_ID'],
       hostedDomain: 'rvce.edu.in',
       scopes: ['email', 'profile'],
     );

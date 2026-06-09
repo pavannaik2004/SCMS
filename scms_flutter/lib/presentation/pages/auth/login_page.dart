@@ -75,6 +75,35 @@ class LoginPage extends StatelessWidget {
                     );
                   },
                 ),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    const Expanded(child: Divider(height: 1, color: AppColors.border)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'DEVELOPMENT BYPASS',
+                        style: AppTextStyles.caption.copyWith(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider(height: 1, color: AppColors.border)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _buildMockButton(context, 'Student', 'ROLE_USER', Colors.blue),
+                    _buildMockButton(context, 'SR (Rep)', 'ROLE_SR', Colors.purple),
+                    _buildMockButton(context, 'Staff', 'ROLE_STAFF', Colors.orange),
+                    _buildMockButton(context, 'Admin', 'ROLE_ADMIN', Colors.red),
+                  ],
+                ),
                 const Spacer(),
                 // Footer
                 Text(
@@ -87,6 +116,23 @@ class LoginPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMockButton(BuildContext context, String label, String role, Color color) {
+    return ActionChip(
+      avatar: Icon(Icons.account_circle_outlined, size: 16, color: color),
+      label: Text(label),
+      labelStyle: AppTextStyles.bodySmall.copyWith(
+        color: color,
+        fontWeight: FontWeight.bold,
+      ),
+      backgroundColor: color.withOpacity(0.08),
+      side: BorderSide(color: color.withOpacity(0.3)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      onPressed: () {
+        context.read<AuthBloc>().add(MockSignInRequested(role: role));
+      },
     );
   }
 }

@@ -14,3 +14,9 @@ class LogoutRequested extends AuthEvent {}
 
 /// Fired when token refresh is needed
 class TokenRefreshRequested extends AuthEvent {}
+
+/// Fired when developer requests a mock sign-in (bypass mode)
+class MockSignInRequested extends AuthEvent {
+  final String role;
+  MockSignInRequested({required this.role});
+}
