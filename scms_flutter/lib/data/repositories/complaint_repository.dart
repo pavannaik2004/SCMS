@@ -131,6 +131,23 @@ class ComplaintRepository {
   Future<DuplicateCheckModel> checkDuplicate(String text, {String? zoneId, List<String>? tags}) =>
       _remoteDataSource.checkDuplicate(text, zoneId: zoneId, tags: tags);
 
+  /// Fetches similar complaints for an already-submitted complaint.
+  ///
+  /// Retrieves the complaint by [id], then runs the AI duplicate check
+  /// against its description. Used by [DuplicateComplaintsPage].
+  Future<DuplicateCheckModel> getDuplicatesForComplaint(String id) async {
+    if (!await _networkInfo.isConnected) throw const NetworkFailure();
+    try {
+      final complaint = await _remoteDataSource.getComplaintById(id);
+      return await _remoteDataSource.checkDuplicate(
+        complaint.description,
+        tags: complaint.tags,
+      );
+    } on ServerException catch (e) {
+      throw ServerFailure(message: e.message, statusCode: e.statusCode);
+    }
+  }
+
   // ─── Reference Data ───────────────────────────────────────
 
   Future<List<DepartmentModel>> getDepartments() async {
