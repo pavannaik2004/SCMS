@@ -169,13 +169,18 @@ Flutter App (scms_flutter/)    →  Node.js API (scms_backend/:3000)  →  Pytho
 | `lib/presentation/widgets/analytics/stats_card.dart` | ✅ (Prabhava) |
 
 ### Phase 5 — Services (Prabhava + Pavan)
-**Status: ✅ COMPLETE** | Date: 2026-06-02
+**Status: ✅ COMPLETE** | Date: 2026-06-09
 
 | File | Author | Status |
 |---|---|---|
 | `lib/services/notification_service.dart` | Prabhava | ✅ FCM + local notifications + in-app banner overlay |
 | `lib/services/analytics_service.dart` | Prabhava | ✅ Error handler + screen/event logging |
 | `lib/firebase_options.dart` | Pavan | ✅ Generated from google-services.json (real values) |
+| `lib/services/camera_service.dart` | Pavan | ✅ ImagePicker (camera + gallery), permission handling, multi-pick, size validation |
+| `lib/services/watermark_service.dart` | Pavan | ✅ Flutter Canvas pipeline — stamps GPS + datetime strip onto photos using WatermarkPainter |
+| `lib/services/location_service.dart` | Pavan | ✅ Geolocator + Geocoding — permission check, getCurrentPosition, reverse geocode, LocationData bundle |
+| `lib/services/grammar_service.dart` | Pavan | ✅ Standalone AI grammar-check service — hits `/api/ai/grammar-check`, fails gracefully |
+| `lib/services/storage_service.dart` | Pavan | ✅ Local `complaint_drafts/` folder management — save, list, delete, clear after submit |
 
 ### Phase 6 — Student Screens (Pavan)
 **Status: ✅ FUNCTIONALLY COMPLETE** | Date: 2026-05-19
@@ -341,7 +346,7 @@ d:\projects\SCMS\
 │       ├── data/datasources/           ✅ Remote (auth + complaint + sr_review) + local
 │       ├── data/repositories/          ✅ Auth + Complaint + SrReview
 │       ├── domain/                     ✅ Entities + 7 use-cases
-│       ├── services/                   ✅ NotificationService + AnalyticsService
+│       ├── services/                   ✅ NotificationService + AnalyticsService + CameraService + WatermarkService + LocationService + GrammarService + StorageService
 │       ├── presentation/bloc/          ✅ Auth + Complaint + SubmitComplaint + SrReview + Analytics
 │       ├── presentation/widgets/       ✅ Common + complaint + notification + analytics widgets
 │       └── presentation/pages/
@@ -356,11 +361,12 @@ d:\projects\SCMS\
 │           ├── settings/               ✅
 │           └── route_helpers.dart      ✅ prabhavaRoutes (all 7 role routes)
 │
-├── scms_backend/                       ← Node.js API ⬜ PREM
-│   ├── package.json                    ✅ All deps listed
-│   ├── prisma/schema.prisma            ✅ Full schema
+├── scms_backend/                       ← Node.js API ✅ PREM COMPLETE (merged 2026-06-09)
+│   ├── package.json                    ✅ All deps
+│   ├── prisma/schema.prisma            ✅ Full schema + migrations
+│   ├── prisma/seed.js                  ✅ Departments, categories, zones, tags, allowed domains
 │   ├── .env.example                    ✅
-│   └── src/                            ⬜ All placeholders — Prem to implement
+│   └── src/                            ✅ All routes + middleware + services + jobs implemented
 │
 └── scms_ai_service/                    ← Python FastAPI ✅ PRAMATH COMPLETE
     ├── .env.example                    ✅
@@ -405,4 +411,4 @@ uvicorn main:app --reload --port 8000
 
 ---
 
-*Last updated: 2026-06-02T10:27:00+05:30 by Pavan (AI agent) — Merged Prabhava's staff/SR/admin branch; registered SrReviewBloc + AnalyticsCubit; initialized Firebase + NotificationService; configured google-services.json with real OAuth client; wired prabhavaRoutes into app.dart. Flutter app fully integrated — only blocker is Prem's Node.js backend.*
+*Last updated: 2026-06-09T10:11:00+05:30 by Pavan (AI agent) — Implemented all 5 remaining Flutter services: CameraService (ImagePicker + permissions), WatermarkService (Flutter Canvas GPS stamp), LocationService (Geolocator + Geocoding + LocationData bundle), GrammarService (standalone AI grammar endpoint wrapper), StorageService (local complaint_drafts/ folder CRUD). Merged Prem's prem/nodejs-backend branch into main (all 25 backend files implemented). Project is now feature-complete across all 3 services.*
