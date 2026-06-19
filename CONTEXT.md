@@ -411,4 +411,86 @@ uvicorn main:app --reload --port 8000
 
 ---
 
-*Last updated: 2026-06-09T10:11:00+05:30 by Pavan (AI agent) — Implemented all 5 remaining Flutter services: CameraService (ImagePicker + permissions), WatermarkService (Flutter Canvas GPS stamp), LocationService (Geolocator + Geocoding + LocationData bundle), GrammarService (standalone AI grammar endpoint wrapper), StorageService (local complaint_drafts/ folder CRUD). Merged Prem's prem/nodejs-backend branch into main (all 25 backend files implemented). Project is now feature-complete across all 3 services.*
+*Last updated: 2026-06-16 by Claude Code (AI agent) — Full-stack integration fixes + UI redesign:*
+*### Critical integration bugs fixed (app compiled but crashed/failed against the real backend)*
+*• Flutter `DioClient`: added `_UnwrapInterceptor` — backend wraps every response in `{success, data}`; data sources read the raw payload now (fixes auth/me, categories, departments, analytics, complaint-by-id, sr/pending, etc.).*
+*• Flutter `complaint_remote_datasource`: list endpoints now read the nested `data.complaints` (was casting a Map to List → runtime crash). Added `_parseComplaintList` helper.*
+*• Flutter submit payload was using wrong field names → every submission failed: `subject`→`title`, photo field `photos`→`media` (multer expects `media`), tags now JSON-encoded. Status update `newStatus`→`status`, rating `comment`→`ratingComment`. Verified rating + status flows via live API.*
+*• Flutter `AnalyticsModel.fromJson` read keys that didn't exist (`totalActiveComplaints`, `byDepartment`…); remapped to backend keys (`activeComplaints`, `slaBreachedCount`, `departmentStats`, `categoryStats`) with computed resolution rate. Admin dashboard now populates.*
+*• Backend: added `src/utils/enrichComplaints.js` — complaints had no category/department/assignee relation, so `categoryName`/`departmentName`/`submittedByName`/`assignedToName`/`photoUrls` came back empty. Wired into `/complaints/my`, `/complaints`, `/complaints/:id`, and `/sr/pending`.*
+*• Android `build.gradle.kts`: enabled core library desugaring (+ desugar_jdk_libs) — `flutter_local_notifications` requires it; release/debug APK builds were failing before this.*
+*### Database / runtime*
+*• Baselined the `20260605083336_init` migration (schema already present), ran `seed.js` + new `seed_sample_data.js` (4 mock users + 5 demo complaints). Backend verified serving real data on :3000 with mock tokens.*
+*### UI redesign (cohesive, modern, beautiful)*
+*• New `AppColors.primaryGradient`/`accentGradient`; new `CategoryIcons` helper; new reusable `GradientAppBar`.*
+*• `ComplaintCard` redesigned: status accent stripe, category icon tile, severity/category pills, shadow.*
+*• `home_page`: gradient hero header + greeting + avatar, glass stat cards, NavigationBar, redesigned profile tab with logout.*
+*• `complaint_detail_page`: gradient SliverAppBar hero, sectioned info cards, vertical connected timeline, rating card.*
+*• Staff + SR dashboards now use `GradientAppBar`; admin dashboard analytics populate.*
+*• `flutter analyze`: No issues found. Debug APK build validated.*
+*---*
+*Earlier (2026-06-15T19:20): Bug fixes + missing UI:*
+*• Backend: Fixed ReferenceError — `status` was undefined in `GET /api/complaints/my` handler (jwtHelper.js was also parsing mock token roles incorrectly — `split('_').pop()` gave `'ADMIN'` not `'ROLE_ADMIN'`; fixed with regex `/_ROLE_(\w+)$/`).*
+*• Backend: Fixed POST `/api/complaints` — `departmentId` was required but Flutter never sent it; now auto-resolved from `category.defaultDepartmentId` in PostgreSQL.*
+*• Flutter: Added `CategorySelectorWidget` to `submit_complaint_page.dart` (loaded from `ComplaintRepository.getCategories()` via FutureBuilder) — submissions no longer fail with empty categoryId.*
+*• Flutter: Added `_AiPreviewBanner` inline widget to submit page — shows Gemini suggestions with Accept/Change buttons.*
+*• Flutter: Fixed `DuplicateWarningBanner.onViewDuplicates` — now shows a `ModalBottomSheet` with the duplicate match list (tapping navigates to complaint detail).*
+*• Flutter: Fixed `duplicate_complaints_page.dart` navigation — was using `Routes.complaintDetail` (path template `/complaint/:id`) as a push URL; now correctly uses `/complaint/${match.id}`.*
+*• Flutter: Added `MultiRepositoryProvider` wrapping in `main.dart` — `ComplaintRepository`, `AuthRepository`, `SrReviewRepository` now accessible via `context.read<T>()`; removed inline `ComplaintRepository` instantiation from `staff_dashboard_page.dart`.*
+*• Flutter: Fixed `FontWeight.extrabold` → `FontWeight.w900` in `login_page.dart` (compile error).*
+*• `flutter analyze`: No issues found.*
+
+---
+
+*Last updated: 2026-06-17 by Claude Code (AI agent) — Premium glassmorphism UI rework (design-system-first, all roles):*
+*### Brand & design system*
+*• Refreshed brand from blue/teal → indigo/violet: `AppColors.primary` #4F46E5, `primaryLight` #818CF8, `primaryDark` #3730A3, `accent` #8B5CF6; `primaryGradient` now indigo→violet. Status/severity/confidence colors kept (semantic). Note: `statusPendingSrReview` (#8B5CF6) now shares the accent hue — harmless in practice.*
+*• Added glass tokens to `AppColors` (`glassFillLight/Dark`, `glassBorderLight/Dark`, `glassBlurSigma`) + soft `backdropLight/Dark` scaffold gradients.*
+*• `app_theme.dart`: cards 20-radius/elevation 0, buttons 14-radius/height 54, filled translucent inputs — both light & dark.*
+*### New reusable widgets*
+*• `common/glass_container.dart` + `glass_card.dart` (BackdropFilter frosted surfaces), `common/app_scaffold.dart` (backdrop-gradient scaffold), `common/section_header.dart`; `gradient_app_bar.dart` gained a `glass: true` frosted mode.*
+*• `ScmsButton` primary is now a gradient pill; `StatsCard` + `ComplaintCard` restyled (glass tile / gradient status stripe).*
+*### Richer dashboard widgets (`widgets/dashboard/`, all derive from existing BLoC state — no new API calls)*
+*• `status_breakdown_ring.dart` (donut + legend), `attention_card.dart` (SLA-at-risk highlight), `quick_actions_row.dart` (glass shortcuts), `trend_sparkline.dart` (7-day line), `sr_summary_header.dart` (SR queue hero).*
+*• Student home: quick actions + attention card + status ring. Staff dash: glass stat tiles + attention + trend + workload ring. SR dash (was a bare list): summary hero. Admin dash: indigo gradient header (kept analytics; no per-day series in model to chart).*
+*### Cohesion + cleanup*
+*• Converted remaining pages to `AppScaffold` + glass `GradientAppBar`: my_complaints, settings, admin_complaints_list, submit/rating/duplicate, staff & SR detail.*
+*• Removed dead route constants `register` + `notificationHistory` (unused, no pages).*
+*### Made non-functional Settings controls actually work*
+*• Added `core/app_preferences.dart` — a `ChangeNotifier` singleton holding `themeMode` + `notificationsEnabled` (in-memory; resets on cold start — persistence is a future enhancement).*
+*• `app.dart`: wrapped `MaterialApp.router` in `ListenableBuilder(AppPreferences.instance)` and bound `themeMode` to it — the Settings theme dropdown (System/Light/Dark) now switches the live app theme.*
+*• `settings_page.dart`: theme dropdown + notifications switch now read/write `AppPreferences` (were dead local-only state).*
+*• `notification_service.dart`: `onMessage` now bails early when `AppPreferences.instance.notificationsEnabled` is false — the Settings toggle actually suppresses in-app banners + local notifications.*
+*• `flutter analyze`: No issues found. Debug APK build validated (`app-debug.apk`).*
+
+---
+
+*Last updated: 2026-06-17 by Claude Code (AI agent) — Enriched staff/SR/admin dashboards (they felt bland vs the student home):*
+*• New reusable `widgets/dashboard/dashboard_hero.dart` (`DashboardHero` — the gradient greeting hero + role badge + avatar + translucent stat cards, mirroring the student header) and `widgets/dashboard/breakdown_bars.dart` (`BreakdownBars` — horizontal-bar distribution, e.g. pending-by-category).*
+*• Staff dashboard: replaced the glass app bar with a `DashboardHero` (Assigned / In Progress / Done Today live stats); kept attention card + 7-day trend + workload ring + task list. Removed the now-duplicate stat-tile row.*
+*• SR dashboard: rebuilt `sr_summary_header.dart` into a `DashboardHero` (Pending / High / Oldest) + a "pending by category" `BreakdownBars`, then the review queue. Dropped the redundant glass app bar.*
+*• Admin dashboard: replaced the plain `SliverAppBar` with a `DashboardHero` (Active / Breaches 7d / Resolution rate); kept the 4 KPI `StatsCard`s + department/category charts + recent SLA breaches.*
+*• All hero stats derive from existing BLoC/analytics state — no new API calls. `flutter analyze`: No issues found.*
+
+---
+
+*Last updated: 2026-06-18 by Claude Code (AI agent) — App-wide premium (no-gradient) finish + full feature parity across all roles. NOTE: this crosses team file-ownership lines (Prabhava's staff/SR/admin pages + `route_helpers.dart`, shared backend `analytics.js`/`complaints.js`/`users.js`) — done deliberately at the user's request for an end-to-end upgrade.*
+*### Design system — gradients removed (solid + frosted glass)*
+*• `AppColors`: `primaryGradient`/`accentGradient` flattened to single-tone (legacy/no on-screen gradient); `backdropLight/Dark` flattened to solid tints; added `primarySurface`/`primaryDeep`. Solid `AppColors.primary` now fills `DashboardHero`, `GradientAppBar` (non-glass), `ScmsButton` primary, `ComplaintCard` status stripe, complaint-detail & login headers. `stats_card`/`quick_actions_row` icon tiles + `trend_sparkline` area fill use solid tints. `grep LinearGradient lib/` shows only the unused legacy constants.*
+*### Backend — read-only global access + analytics for everyone*
+*• `analytics.js`: dropped the `ROLE_ADMIN/ROLE_DEPT_HEAD` gate (now any authenticated user); `/summary` also returns `recentSlaBreaches` (last 7d, enriched) so `AnalyticsModel.recentSlaBreaches` finally populates.*
+*• `complaints.js`: `GET /` gained opt-in `scope=all` (bypasses role-scoping for the shared feed), plus `severity` + text `q` (title/description/complaintNumber) filters; default behaviour unchanged. `GET /:id` read RBAC relaxed — any authenticated user can READ a complaint; all write routes (status/assign/rating/SR approve-reject) stay guarded.*
+*• `users.js`: added `GET /api/users?role=ROLE_STAFF` (Admin/Dept-Head only) for the assignment picker (selects incl. `createdAt`/`lastLogin` so Flutter `UserModel` parses).*
+*### Flutter — shared role shell + 3 cross-role screens*
+*• `pages/shell/main_shell.dart`: every role now lands in one bottom-nav shell — role-specific Dashboard + shared All / Stats / Profile tabs (lazy-built, so unopened tabs don't fire network calls). `app.dart` (student) + `route_helpers.dart` (staff/SR/admin) route to `MainShell`. New routes: `/complaints/all`, `/stats`, `/complaints/mine`.*
+*• `bloc/all_complaints/` (`AllComplaintsCubit`+state): isolated from `ComplaintBloc`; owns query/pagination for the global feed (reuses `repo.getAllComplaints` → `scope=all`).*
+*• `pages/complaints/all_complaints_page.dart`: read-only system-wide feed for all roles — debounced search, status chips, category/department/severity filter sheet, infinite scroll. Self-provides its cubit (works as tab or pushed drill-down via `?categoryName=`/`?status=`). Supersedes `admin_complaints_list_page.dart` (route removed; file left orphaned).*
+*• `pages/stats/stats_page.dart`: analytics for every role — KPIs + by-dept/by-category charts + recent SLA breaches (from `AnalyticsCubit`), a recent-inflow sparkline (page-scoped feed cubit), tappable category drill-down, and CSV copy-to-clipboard export.*
+*• `pages/profile/profile_page.dart`: unified premium profile for all roles (replaces student's inline tab) — solid header + glass cards, personal activity stats, working notifications/theme toggles (`AppPreferences`), Settings + Logout.*
+*• `home_page.dart`: reworked into `StudentDashboardView` (shell tab 1) using `DashboardHero`; "See all"/quick actions push `/complaints/mine` and `/complaints/all`.*
+*### Per-role workflow upgrades*
+*• Staff: long-press multi-select → bulk Mark In-Progress/Resolve (contextual bottom bar); detail page gained an Activity Timeline from `complaint.updates[]`.*
+*• SR: severity filter chips over the pending queue (client-side).*
+*• Admin: assign/reassign-to-staff from the complaint detail (staff picker sheet → `PATCH /:id/assign`); chart category drill-down; CSV export of analytics.*
+*• Data layer: `ComplaintRemoteDataSource`/`ComplaintRepository` gained `getStaff()` + `assignComplaint()`; `getAllComplaints` now sends `scope=all` + `q`.*
+*• `flutter analyze`: No issues found. Backend routes pass `node --check`.*

@@ -33,9 +33,9 @@ if _api_key:
 else:
     logger.warning("GEMINI_API_KEY not set — Gemini calls will fail gracefully.")
 
-# Model identifiers
-_TEXT_MODEL = "gemini-2.0-flash"
-_EMBED_MODEL = "models/gemini-embedding-004"  # 768-d, SEMANTIC_SIMILARITY task
+# Model identifiers (overridable via env so we can switch if a model has no quota)
+_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-2.5-flash")
+_EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "models/gemini-embedding-004")  # 768-d
 
 # ── Categories known to the system ───────────────────────────────────────────
 CATEGORIES = [
@@ -107,6 +107,22 @@ async def grammar_correct(text: str) -> dict:
     """
     default = {"correctedText": text, "hasCorrections": False}
 
+    if not _api_key:
+        # Development mock mode when GEMINI_API_KEY is not set
+        text_lower = text.lower()
+        corrected = text
+        has_corrections = False
+        if "ther is" in text_lower:
+            corrected = re.sub(r"(?i)ther is", "There is", text)
+            has_corrections = True
+        elif "speling" in text_lower:
+            corrected = re.sub(r"(?i)speling", "spelling", text)
+            has_corrections = True
+        return {
+            "correctedText": corrected,
+            "hasCorrections": has_corrections,
+        }
+
     try:
         prompt = f"""You are a grammar correction assistant for complaint submissions at an engineering college.
 Correct ONLY grammar and spelling errors. Do NOT change the meaning, add new information, or alter technical terms.
@@ -149,6 +165,27 @@ async def categorize_complaint(text: str) -> dict:
         "confidenceScore": 0.0,
         "reasoning": "Categorization unavailable.",
     }
+
+    if not _api_key:
+        # Development mock mode when GEMINI_API_KEY is not set
+        text_lower = text.lower()
+        suggested = "Other"
+        severity = "MEDIUM"
+        if "leakage" in text_lower or "water" in text_lower or "plumbing" in text_lower:
+            suggested = "Plumbing"
+            severity = "HIGH"
+        elif "power" in text_lower or "light" in text_lower or "fan" in text_lower or "electricity" in text_lower:
+            suggested = "Electrical"
+            severity = "HIGH"
+        elif "internet" in text_lower or "wifi" in text_lower or "network" in text_lower:
+            suggested = "IT/Network"
+            severity = "MEDIUM"
+        return {
+            "suggestedCategory": suggested,
+            "suggestedSeverity": severity,
+            "confidenceScore": 0.9,
+            "reasoning": f"Mock categorization for: {suggested}",
+        }
 
     try:
         categories_str = ", ".join(CATEGORIES)
@@ -203,6 +240,10 @@ async def embed_text(text: str) -> list[float]:
 
     Returns an empty list on failure (callers must handle this).
     """
+    if not _api_key:
+        # Development mock mode when GEMINI_API_KEY is not set
+        return [0.1] * 768
+
     try:
         if _client is None:
             raise RuntimeError("Gemini client not initialised (GEMINI_API_KEY missing).")

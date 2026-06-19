@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../core/network/dio_client.dart';
-import '../../../core/network/network_info.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/extensions.dart';
-import '../../../data/datasources/local/complaint_local_datasource.dart';
-import '../../../data/datasources/remote/complaint_remote_datasource.dart';
 import '../../../data/models/complaint_model.dart';
+import '../../../data/models/complaint_update_model.dart';
 import '../../../data/repositories/complaint_repository.dart';
 import '../../../domain/usecases/update_complaint_status_usecase.dart';
 import '../../bloc/complaint/complaint_bloc.dart';
 import '../../bloc/complaint/complaint_event.dart';
 import '../../bloc/complaint/complaint_state.dart';
+import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/error_widget.dart';
+import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/loading_overlay.dart';
 import '../../widgets/common/scms_button.dart';
 import '../../widgets/common/scms_text_field.dart';
@@ -40,11 +39,7 @@ class _StaffComplaintDetailPageState extends State<StaffComplaintDetailPage> {
 	void initState() {
 		super.initState();
 		_updateStatusUseCase = UpdateComplaintStatusUseCase(
-			repository: ComplaintRepository(
-				remoteDataSource: ComplaintRemoteDataSource(dioClient: DioClient()),
-				localDataSource: ComplaintLocalDataSource(),
-				networkInfo: NetworkInfo(),
-			),
+			repository: context.read<ComplaintRepository>(),
 		);
 		context.read<ComplaintBloc>().add(
 					LoadComplaintDetail(complaintId: widget.complaintId),
@@ -59,8 +54,8 @@ class _StaffComplaintDetailPageState extends State<StaffComplaintDetailPage> {
 
 	@override
 	Widget build(BuildContext context) {
-		return Scaffold(
-			appBar: AppBar(title: const Text('Task Detail')),
+		return AppScaffold(
+			appBar: const GradientAppBar(title: 'Task Detail', roleBadge: 'STAFF', glass: true),
 			body: BlocBuilder<ComplaintBloc, ComplaintState>(
 				builder: (context, state) {
 					if (state is ComplaintLoading) {
@@ -148,6 +143,12 @@ class _StaffComplaintDetailPageState extends State<StaffComplaintDetailPage> {
 									label: 'Save Update',
 									onPressed: canUpdate ? () => _saveUpdate(c) : null,
 								),
+								if (c.updates.isNotEmpty) ...[
+									const SizedBox(height: 28),
+									Text('Activity Timeline', style: AppTextStyles.titleLarge),
+									const SizedBox(height: 12),
+									...c.updates.map(_timelineTile),
+								],
 							],
 						),
 					);
@@ -195,6 +196,56 @@ class _StaffComplaintDetailPageState extends State<StaffComplaintDetailPage> {
 		} finally {
 			if (mounted) setState(() => _isSaving = false);
 		}
+	}
+
+	Widget _timelineTile(ComplaintUpdateModel u) {
+		return Container(
+			margin: const EdgeInsets.only(bottom: 10),
+			padding: const EdgeInsets.all(12),
+			decoration: BoxDecoration(
+				color: AppColors.surfaceVariant.withOpacity(0.5),
+				borderRadius: BorderRadius.circular(12),
+			),
+			child: Row(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					Text(u.timelineIcon, style: const TextStyle(fontSize: 18)),
+					const SizedBox(width: 12),
+					Expanded(
+						child: Column(
+							crossAxisAlignment: CrossAxisAlignment.start,
+							children: [
+								Row(
+									children: [
+										Expanded(
+											child: Text(
+												'${u.previousStatus.toStatusLabel()} → ${u.newStatus.toStatusLabel()}',
+												style: AppTextStyles.titleSmall,
+											),
+										),
+										Text(u.timestamp.timeAgoString, style: AppTextStyles.caption),
+									],
+								),
+								if (u.notes != null && u.notes!.isNotEmpty) ...[
+									const SizedBox(height: 4),
+									Text(
+										u.notes!,
+										style: AppTextStyles.bodySmall
+												.copyWith(color: AppColors.textSecondary),
+									),
+								],
+								const SizedBox(height: 4),
+								Text(
+									u.updatedByName,
+									style: AppTextStyles.labelSmall
+											.copyWith(color: AppColors.textSecondary),
+								),
+							],
+						),
+					),
+				],
+			),
+		);
 	}
 
 	Widget _infoRow(IconData icon, String label, String value) {

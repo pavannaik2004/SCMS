@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/duplicate_check_model.dart';
 import '../../../data/repositories/complaint_repository.dart';
+import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/error_widget.dart' as scms;
+import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/complaint/status_badge.dart';
 
 /// Shows the list of complaints that are similar to the one the user just
@@ -45,10 +46,10 @@ class _DuplicateComplaintsPageState extends State<DuplicateComplaintsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Similar Complaints'),
+    return AppScaffold(
+      appBar: GradientAppBar(
+        title: 'Similar Complaints',
+        glass: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -155,10 +156,7 @@ class _DuplicateCard extends StatelessWidget {
     final similarity = (match.score * 100).toStringAsFixed(0);
 
     return GestureDetector(
-      onTap: () => context.push(
-        Routes.complaintDetail,
-        extra: match.id,
-      ),
+      onTap: () => context.push('/complaint/${match.id}'),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(

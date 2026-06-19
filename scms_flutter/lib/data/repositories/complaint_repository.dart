@@ -9,6 +9,7 @@ import '../models/department_model.dart';
 import '../models/grammar_correction_model.dart';
 import '../models/duplicate_check_model.dart';
 import '../models/analytics_model.dart';
+import '../models/user_model.dart';
 
 class ComplaintRepository {
   final ComplaintRemoteDataSource _remoteDataSource;
@@ -82,6 +83,24 @@ class ComplaintRepository {
         longitude: longitude,
         placeName: placeName,
       );
+    } on ServerException catch (e) {
+      throw ServerFailure(message: e.message, statusCode: e.statusCode);
+    }
+  }
+
+  Future<List<UserModel>> getStaff() async {
+    if (!await _networkInfo.isConnected) throw const NetworkFailure();
+    try {
+      return await _remoteDataSource.getStaff();
+    } on ServerException catch (e) {
+      throw ServerFailure(message: e.message, statusCode: e.statusCode);
+    }
+  }
+
+  Future<void> assignComplaint(String id, String assignedToId) async {
+    if (!await _networkInfo.isConnected) throw const NetworkFailure();
+    try {
+      await _remoteDataSource.assignComplaint(id, assignedToId);
     } on ServerException catch (e) {
       throw ServerFailure(message: e.message, statusCode: e.statusCode);
     }

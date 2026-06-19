@@ -4,7 +4,6 @@ class Routes {
   static const String splash = '/';
   static const String onboarding = '/onboarding';
   static const String login = '/login';
-  static const String register = '/register';
   static const String userHome = '/home/user';
   static const String staffHome = '/home/staff';
   static const String srHome = '/home/sr';
@@ -16,5 +15,9 @@ class Routes {
   static const String srReviewDetail = '/sr/review/:id';
   static const String staffComplaintDetail = '/staff/complaint/:id';
   static const String settings = '/settings';
-  static const String notificationHistory = '/notifications';
+
+  // Shared cross-role screens (read-only feed, analytics, personal list).
+  static const String allComplaints = '/complaints/all';
+  static const String stats = '/stats';
+  static const String myComplaints = '/complaints/mine';
 }

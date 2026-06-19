@@ -6,6 +6,7 @@ const authenticate = require('../middleware/authenticate');
 const requireRole = require('../middleware/requireRole');
 const validateBody = require('../middleware/validateBody');
 const { sendPushNotification } = require('../services/fcm');
+const { enrichComplaints } = require('../utils/enrichComplaints');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -40,6 +41,7 @@ router.get('/pending', async (req, res, next) => {
       },
       orderBy: { createdAt: 'desc' }
     });
+    await enrichComplaints(complaints);
     return sendSuccess(res, complaints);
   } catch (error) {
     next(error);

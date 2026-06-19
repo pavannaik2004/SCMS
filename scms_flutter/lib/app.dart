@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/app_preferences.dart';
 import 'core/constants/route_constants.dart';
 import 'core/theme/app_theme.dart';
 
@@ -10,38 +11,46 @@ import 'presentation/bloc/auth/auth_state.dart';
 import 'presentation/pages/splash/splash_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
 import 'presentation/pages/auth/login_page.dart';
-import 'presentation/pages/home/home_page.dart';
+import 'presentation/pages/shell/main_shell.dart';
 
 import 'presentation/pages/complaint/submit_complaint_page.dart';
 import 'presentation/pages/complaint/complaint_detail_page.dart';
 import 'presentation/pages/complaint/duplicate_complaints_page.dart';
+import 'presentation/pages/complaint/my_complaints_page.dart';
 import 'presentation/pages/complaint/rating_page.dart';
+import 'presentation/pages/complaints/all_complaints_page.dart';
+import 'presentation/pages/stats/stats_page.dart';
 import 'presentation/pages/route_helpers.dart';
 
-class ScmsApp extends StatelessWidget {
+import 'dart:async';
+
+class ScmsApp extends StatefulWidget {
   const ScmsApp({super.key, this.navigatorKey});
 
   final GlobalKey<NavigatorState>? navigatorKey;
 
   @override
-  Widget build(BuildContext context) {
-    final router = _buildRouter(navigatorKey);
-    return MaterialApp.router(
-      title: 'SCMS',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
-      routerConfig: router,
-    );
-  }
+  State<ScmsApp> createState() => _ScmsAppState();
+}
 
-  static GoRouter _buildRouter(GlobalKey<NavigatorState>? navigatorKey) {
-    return GoRouter(
-      navigatorKey: navigatorKey,
+class _ScmsAppState extends State<ScmsApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _router = GoRouter(
+      navigatorKey: widget.navigatorKey,
       initialLocation: Routes.splash,
+      refreshListenable: GoRouterRefreshStream(context.read<AuthBloc>().stream),
       redirect: (context, state) {
         final authState = context.read<AuthBloc>().state;
+
+        // If auth is still checking or loading, do not redirect anywhere yet
+        if (authState is AuthInitial || authState is AuthLoading) {
+          return null;
+        }
+
         final isLoggedIn = authState is AuthAuthenticated;
 
         final authPages = {
@@ -72,11 +81,26 @@ class ScmsApp extends StatelessWidget {
         ),
         GoRoute(
           path: Routes.userHome,
-          builder: (context, state) => const HomePage(),
+          builder: (context, state) => const MainShell(),
         ),
         GoRoute(
           path: Routes.submitComplaint,
           builder: (context, state) => const SubmitComplaintPage(),
+        ),
+        GoRoute(
+          path: Routes.allComplaints,
+          builder: (context, state) => AllComplaintsPage(
+            initialStatus: state.uri.queryParameters['status'],
+            initialCategoryName: state.uri.queryParameters['categoryName'],
+          ),
+        ),
+        GoRoute(
+          path: Routes.stats,
+          builder: (context, state) => const StatsPage(),
+        ),
+        GoRoute(
+          path: Routes.myComplaints,
+          builder: (context, state) => const MyComplaintsPage(),
         ),
         GoRoute(
           path: Routes.complaintDetail,
@@ -104,6 +128,23 @@ class ScmsApp extends StatelessWidget {
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: AppPreferences.instance,
+      builder: (context, _) {
+        return MaterialApp.router(
+          title: 'SCMS',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: AppPreferences.instance.themeMode,
+          routerConfig: _router,
+        );
+      },
+    );
+  }
+
   static String _getRoleHome(String role) {
     switch (role) {
       case 'ROLE_ADMIN':
@@ -116,5 +157,24 @@ class ScmsApp extends StatelessWidget {
       default:
         return Routes.userHome;
     }
+  }
+}
+
+/// Helper class to convert a stream of changes (like AuthBloc state stream)
+/// into a Listenable that GoRouter can subscribe to.
+class GoRouterRefreshStream extends ChangeNotifier {
+  late final StreamSubscription<dynamic> _subscription;
+
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen(
+          (dynamic _) => notifyListeners(),
+        );
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 }

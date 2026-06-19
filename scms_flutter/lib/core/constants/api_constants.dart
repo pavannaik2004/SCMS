@@ -49,6 +49,7 @@ class ApiConstants {
   static const String analyticsSlaBreaches = '/analytics/sla-breaches';
 
   // ─── Users ────────────────────────────────────────────────
+  static const String users = '/users';
   static const String userFcmToken = '/users/fcm-token';
 
   /// Build full URL for an endpoint

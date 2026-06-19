@@ -25,8 +25,24 @@ class DioClient {
 
     dio.interceptors.addAll([
       _AuthInterceptor(_secureStorage, dio),
+      _UnwrapInterceptor(),
       _LoggingInterceptor(),
     ]);
+  }
+}
+
+/// The backend wraps every successful response in `{ "success": true, "data": ... }`.
+/// This interceptor unwraps it so data sources receive the raw payload directly.
+class _UnwrapInterceptor extends Interceptor {
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    final data = response.data;
+    if (data is Map<String, dynamic> &&
+        data.containsKey('success') &&
+        data.containsKey('data')) {
+      response.data = data['data'];
+    }
+    handler.next(response);
   }
 }
 

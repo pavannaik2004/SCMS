@@ -10,3 +10,4 @@ scms_backend/firebase-service-account.json
 .idea/
 .vscode/
 *.iml
+CLAUDE.md

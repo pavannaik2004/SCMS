@@ -10,6 +10,7 @@ const { getMediaUrl } = require('../services/storage');
 const { generateComplaintNumber } = require('../services/complaintNumber');
 const { generateAndStoreEmbedding } = require('../services/aiProxy');
 const { sendPushNotification } = require('../services/fcm');
+const { enrichComplaints } = require('../utils/enrichComplaints');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -39,9 +40,11 @@ router.use(authenticate);
  */
 router.get('/my', async (req, res, next) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
+    const page = req.query.page !== undefined ? Number(req.query.page) : 0;
+    const limit = req.query.limit !== undefined ? Number(req.query.limit) : (req.query.size !== undefined ? Number(req.query.size) : 10);
+    const skip = page * limit;
 
+    const { status } = req.query;
     let whereClause = {};
 
     if (req.user.role === 'ROLE_USER') {
@@ -72,6 +75,8 @@ router.get('/my', async (req, res, next) => {
 
     const total = await prisma.complaint.count({ where: whereClause });
 
+    await enrichComplaints(complaints);
+
     return sendSuccess(res, {
       complaints,
       pagination: {
@@ -93,20 +98,35 @@ router.get('/my', async (req, res, next) => {
  */
 router.get('/', async (req, res, next) => {
   try {
-    const { status, departmentId, categoryId, page = 1, limit = 10 } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
+    const page = req.query.page !== undefined ? Number(req.query.page) : 0;
+    const limit = req.query.limit !== undefined ? Number(req.query.limit) : (req.query.size !== undefined ? Number(req.query.size) : 10);
+    const skip = page * limit;
+
+    const { status, departmentId, categoryId, severity, q, scope } = req.query;
 
     // Default filters
     const whereClause = {};
     if (status) whereClause.status = status;
     if (departmentId) whereClause.departmentId = departmentId;
     if (categoryId) whereClause.categoryId = categoryId;
+    if (severity) whereClause.severity = severity;
+    if (q) {
+      whereClause.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+        { complaintNumber: { contains: q, mode: 'insensitive' } }
+      ];
+    }
 
-    // Restrict list to own entries if standard user
-    if (req.user.role === 'ROLE_USER') {
-      whereClause.submittedById = req.user.id;
-    } else if (req.user.role === 'ROLE_STAFF') {
-      whereClause.assignedToId = req.user.id;
+    // `scope=all` exposes the read-only, system-wide explore feed to ANY
+    // authenticated role. Without it, the list stays role-scoped (students see
+    // their own, staff see assigned) so existing screens are unaffected.
+    if (scope !== 'all') {
+      if (req.user.role === 'ROLE_USER') {
+        whereClause.submittedById = req.user.id;
+      } else if (req.user.role === 'ROLE_STAFF') {
+        whereClause.assignedToId = req.user.id;
+      }
     }
 
     const complaints = await prisma.complaint.findMany({
@@ -123,6 +143,8 @@ router.get('/', async (req, res, next) => {
     });
 
     const total = await prisma.complaint.count({ where: whereClause });
+
+    await enrichComplaints(complaints);
 
     return sendSuccess(res, {
       complaints,
@@ -163,14 +185,12 @@ router.get('/:id', async (req, res, next) => {
       return sendError(res, 404, 'Complaint not found.');
     }
 
-    // RBAC: Verify user has rights to view this ticket
-    const isOwner = complaint.submittedById === req.user.id;
-    const isAssigned = complaint.assignedToId === req.user.id;
-    const isPrivileged = ['ROLE_ADMIN', 'ROLE_DEPT_HEAD', 'ROLE_SR'].includes(req.user.role);
+    // Read access is open to any authenticated user — every role can browse the
+    // system-wide complaint feed and open a complaint's details (read-only).
+    // Write actions (status/assign/rating/SR approve-reject) stay guarded on
+    // their own routes, so opening a ticket never grants the ability to mutate it.
 
-    if (!isOwner && !isAssigned && !isPrivileged) {
-      return sendError(res, 403, 'Forbidden: You do not have permission to view this complaint.');
-    }
+    await enrichComplaints(complaint);
 
     return sendSuccess(res, complaint);
   } catch (error) {
@@ -196,8 +216,18 @@ router.post('/', upload.array('media', 5), async (req, res, next) => {
       gpsPlaceName
     } = req.body;
 
+    // Auto-resolve departmentId from the category's default if not explicitly provided
+    let resolvedDepartmentId = departmentId || null;
+    if (!resolvedDepartmentId && categoryId) {
+      const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { defaultDepartmentId: true }
+      });
+      resolvedDepartmentId = category?.defaultDepartmentId || null;
+    }
+
     // Validate main required text inputs manually since middleware is bypassed for multipart forms
-    if (!title || !description || !location || !categoryId || !departmentId || !severity) {
+    if (!title || !description || !location || !categoryId || !resolvedDepartmentId || !severity) {
       return sendError(res, 400, 'Bad Request: Missing required form fields.');
     }
 
@@ -244,7 +274,7 @@ router.post('/', upload.array('media', 5), async (req, res, next) => {
           description,
           location,
           categoryId,
-          departmentId,
+          departmentId: resolvedDepartmentId,
           severity,
           status: 'PENDING_SR_REVIEW',
           tags,

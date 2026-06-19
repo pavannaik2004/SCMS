@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/app_preferences.dart';
 import '../core/constants/api_constants.dart';
 import '../core/constants/app_constants.dart';
 import '../core/network/dio_client.dart';
@@ -53,6 +54,8 @@ class NotificationService {
 			messaging.onTokenRefresh.listen(_sendTokenToServer);
 
 			FirebaseMessaging.onMessage.listen((message) {
+				// Respect the user's notifications preference (Settings toggle).
+				if (!AppPreferences.instance.notificationsEnabled) return;
 				_showInAppBanner(message, navigatorKey);
 				_showLocalNotification(message);
 			});

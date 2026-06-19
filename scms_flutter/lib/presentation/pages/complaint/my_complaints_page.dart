@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import '../../bloc/complaint/complaint_bloc.dart';
 import '../../bloc/complaint/complaint_event.dart';
 import '../../bloc/complaint/complaint_state.dart';
+import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/error_widget.dart';
+import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/scms_chip.dart';
 import '../../widgets/complaint/complaint_card.dart';
 
@@ -30,8 +32,8 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Complaints')),
+    return AppScaffold(
+      appBar: const GradientAppBar(title: 'My Complaints', glass: true),
       body: Column(
         children: [
           // Filter chips

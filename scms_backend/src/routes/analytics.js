@@ -2,14 +2,15 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { sendSuccess } = require('../utils/responseHelper');
 const authenticate = require('../middleware/authenticate');
-const requireRole = require('../middleware/requireRole');
+const { enrichComplaints } = require('../utils/enrichComplaints');
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Guard route to privileged roles
+// Aggregated analytics are read-only, system-wide numbers. Any authenticated
+// user may view them (the dashboards expose a shared "Stats" tab to every role).
+// Write actions remain guarded on their own routes.
 router.use(authenticate);
-router.use(requireRole('ROLE_ADMIN', 'ROLE_DEPT_HEAD'));
 
 /**
  * GET /api/analytics/summary
@@ -99,6 +100,24 @@ router.get('/summary', async (req, res, next) => {
       count: group._count.id
     }));
 
+    // Recent SLA breaches (last 7 days) for the dashboard "needs attention" list
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentSlaBreaches = await prisma.complaint.findMany({
+      where: {
+        isSlaBreached: true,
+        updatedAt: { gte: sevenDaysAgo }
+      },
+      include: {
+        submittedBy: {
+          select: { id: true, name: true, email: true, picture: true }
+        },
+        mediaItems: true
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 10
+    });
+    await enrichComplaints(recentSlaBreaches);
+
     return sendSuccess(res, {
       totalComplaints,
       activeComplaints,
@@ -106,7 +125,8 @@ router.get('/summary', async (req, res, next) => {
       slaBreachedCount,
       averageResolutionTimeHours,
       departmentStats,
-      categoryStats
+      categoryStats,
+      recentSlaBreaches
     });
 
   } catch (error) {

@@ -3,15 +3,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/analytics_model.dart';
 import '../../bloc/analytics/analytics_cubit.dart';
 import '../../bloc/analytics/analytics_state.dart';
+import '../../bloc/auth/auth_bloc.dart';
+import '../../bloc/auth/auth_state.dart';
 import '../../widgets/analytics/complaints_chart.dart';
 import '../../widgets/analytics/stats_card.dart';
+import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/error_widget.dart';
+import '../../widgets/common/section_header.dart';
 import '../../widgets/complaint/complaint_card.dart';
+import '../../widgets/dashboard/dashboard_hero.dart';
 
 class AdminDashboardPage extends StatefulWidget {
 	const AdminDashboardPage({super.key});
@@ -29,7 +35,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
 	@override
 	Widget build(BuildContext context) {
-		return Scaffold(
+		return AppScaffold(
 			body: BlocBuilder<AnalyticsCubit, AnalyticsState>(
 				builder: (context, state) {
 					if (state is AnalyticsLoading) {
@@ -53,22 +59,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 					final analytics = state.analytics;
 					return CustomScrollView(
 						slivers: [
-							SliverAppBar(
-								pinned: true,
-								expandedHeight: 120,
-								flexibleSpace: FlexibleSpaceBar(
-									title: const Text('Admin Dashboard'),
-									background: Container(
-										decoration: const BoxDecoration(
-											gradient: LinearGradient(
-												colors: [AppColors.primary, AppColors.primaryDark],
-												begin: Alignment.topLeft,
-												end: Alignment.bottomRight,
-											),
-										),
-									),
-								),
-							),
+							SliverToBoxAdapter(child: _buildHero(context, analytics)),
 							SliverToBoxAdapter(
 								child: Padding(
 									padding: const EdgeInsets.all(16),
@@ -81,9 +72,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 												departments: analytics.byDepartment,
 												categories: analytics.byCategory,
 											),
-											const SizedBox(height: 24),
-											Text('Recent SLA Breaches', style: AppTextStyles.titleMedium),
-											const SizedBox(height: 12),
+											const SizedBox(height: 8),
+											const SectionHeader(
+												title: 'Recent SLA Breaches',
+												padding: EdgeInsets.fromLTRB(0, 16, 0, 12),
+											),
 											if (analytics.recentSlaBreaches.isEmpty)
 												Text(
 													'No breaches in the last 7 days.',
@@ -110,6 +103,35 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 					);
 				},
 			),
+		);
+	}
+
+	Widget _buildHero(BuildContext context, AnalyticsModel analytics) {
+		final authState = context.watch<AuthBloc>().state;
+		final user = authState is AuthAuthenticated ? authState.user : null;
+		final name = user?.name.split(' ').first ?? 'Admin';
+		return DashboardHero(
+			greeting: DateFormatter.greeting(),
+			name: name,
+			roleBadge: 'ADMIN',
+			avatarUrl: user?.picture,
+			stats: [
+				HeroStat(
+					label: 'Active',
+					value: '${analytics.totalActiveComplaints}',
+					icon: Icons.inbox_rounded,
+				),
+				HeroStat(
+					label: 'Breaches 7d',
+					value: '${analytics.slaBreachesLast7Days}',
+					icon: Icons.warning_amber_rounded,
+				),
+				HeroStat(
+					label: 'Resolved',
+					value: analytics.resolutionRatePercent.toPercentString(),
+					icon: Icons.trending_up_rounded,
+				),
+			],
 		);
 	}
 

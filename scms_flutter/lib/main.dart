@@ -86,31 +86,38 @@ void main() async {
   final getAnalyticsUseCase = GetAnalyticsUseCase(repository: complaintRepo);
 
   runApp(
-    MultiBlocProvider(
+    MultiRepositoryProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          create: (_) => AuthBloc(authRepository: authRepo)..add(AppStarted()),
-        ),
-        BlocProvider<ComplaintBloc>(
-          create: (_) => ComplaintBloc(repository: complaintRepo),
-        ),
-        BlocProvider<SubmitComplaintCubit>(
-          create: (_) => SubmitComplaintCubit(repository: complaintRepo),
-        ),
-        // Prabhava — SR review workflow
-        BlocProvider<SrReviewBloc>(
-          create: (_) => SrReviewBloc(
-            repository: srReviewRepo,
-            approveUseCase: srApproveUseCase,
-            rejectUseCase: srRejectUseCase,
-          ),
-        ),
-        // Prabhava — Analytics dashboard
-        BlocProvider<AnalyticsCubit>(
-          create: (_) => AnalyticsCubit(getAnalyticsUseCase: getAnalyticsUseCase),
-        ),
+        RepositoryProvider<AuthRepository>(create: (_) => authRepo),
+        RepositoryProvider<ComplaintRepository>(create: (_) => complaintRepo),
+        RepositoryProvider<SrReviewRepository>(create: (_) => srReviewRepo),
       ],
-      child: ScmsApp(navigatorKey: _navigatorKey),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthBloc>(
+            create: (_) => AuthBloc(authRepository: authRepo)..add(AppStarted()),
+          ),
+          BlocProvider<ComplaintBloc>(
+            create: (_) => ComplaintBloc(repository: complaintRepo),
+          ),
+          BlocProvider<SubmitComplaintCubit>(
+            create: (_) => SubmitComplaintCubit(repository: complaintRepo),
+          ),
+          // Prabhava — SR review workflow
+          BlocProvider<SrReviewBloc>(
+            create: (_) => SrReviewBloc(
+              repository: srReviewRepo,
+              approveUseCase: srApproveUseCase,
+              rejectUseCase: srRejectUseCase,
+            ),
+          ),
+          // Prabhava — Analytics dashboard
+          BlocProvider<AnalyticsCubit>(
+            create: (_) => AnalyticsCubit(getAnalyticsUseCase: getAnalyticsUseCase),
+          ),
+        ],
+        child: ScmsApp(navigatorKey: _navigatorKey),
+      ),
     ),
   );
 }

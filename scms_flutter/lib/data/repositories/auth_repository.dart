@@ -51,7 +51,7 @@ class AuthRepository {
       departmentName: 'MCA Department',
       createdAt: DateTime.now(),
     );
-    await _localDataSource.saveTokens('mock_access_token', 'mock_refresh_token');
+    await _localDataSource.saveTokens('mock_access_token_$role', 'mock_refresh_token_$role');
     await _localDataSource.saveUser(user);
     return user;
   }

@@ -26,33 +26,57 @@ class ScmsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final buttonHeight = height ?? 52.0;
+    final buttonHeight = height ?? 54.0;
 
-    Widget child = isLoading
-        ? const SizedBox(
+    Widget contentFor(Color fg) => isLoading
+        ? SizedBox(
             width: 22,
             height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: fg),
           )
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 20),
+                Icon(icon, size: 20, color: fg),
                 const SizedBox(width: 8),
               ],
-              Text(label, style: AppTextStyles.button),
+              Text(label, style: AppTextStyles.button.copyWith(color: fg)),
             ],
           );
 
     switch (variant) {
       case ScmsButtonVariant.primary:
-        return SizedBox(
-          width: isFullWidth ? double.infinity : null,
-          height: buttonHeight,
-          child: ElevatedButton(
-            onPressed: isLoading ? null : onPressed,
-            child: child,
+        // Solid indigo pill for a premium primary action (no gradient).
+        final enabled = !isLoading && onPressed != null;
+        return Opacity(
+          opacity: enabled ? 1 : 0.6,
+          child: SizedBox(
+            width: isFullWidth ? double.infinity : null,
+            height: buttonHeight,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: enabled
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: enabled ? onPressed : null,
+                  child: Center(child: contentFor(Colors.white)),
+                ),
+              ),
+            ),
           ),
         );
       case ScmsButtonVariant.secondary:
@@ -61,7 +85,9 @@ class ScmsButton extends StatelessWidget {
           height: buttonHeight,
           child: OutlinedButton(
             onPressed: isLoading ? null : onPressed,
-            child: child,
+            child: contentFor(
+              Theme.of(context).colorScheme.primary,
+            ),
           ),
         );
       case ScmsButtonVariant.destructive:
@@ -74,13 +100,13 @@ class ScmsButton extends StatelessWidget {
               backgroundColor: AppColors.severityHigh,
               foregroundColor: Colors.white,
             ),
-            child: child,
+            child: contentFor(Colors.white),
           ),
         );
       case ScmsButtonVariant.text:
         return TextButton(
           onPressed: isLoading ? null : onPressed,
-          child: child,
+          child: contentFor(Theme.of(context).colorScheme.primary),
         );
     }
   }

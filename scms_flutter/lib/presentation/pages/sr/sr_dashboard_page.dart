@@ -4,14 +4,18 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/models/complaint_model.dart';
 import '../../bloc/sr_review/sr_review_bloc.dart';
 import '../../bloc/sr_review/sr_review_event.dart';
 import '../../bloc/sr_review/sr_review_state.dart';
+import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/error_widget.dart';
 import '../../widgets/common/scms_button.dart';
+import '../../widgets/common/scms_chip.dart';
 import '../../widgets/common/scms_text_field.dart';
 import '../../widgets/complaint/complaint_card.dart';
+import '../../widgets/dashboard/sr_summary_header.dart';
 
 class SrDashboardPage extends StatefulWidget {
 	const SrDashboardPage({super.key});
@@ -21,29 +25,45 @@ class SrDashboardPage extends StatefulWidget {
 }
 
 class _SrDashboardPageState extends State<SrDashboardPage> {
+	String? _severity; // null = All
+
 	@override
 	void initState() {
 		super.initState();
 		context.read<SrReviewBloc>().add(LoadPendingReviews());
 	}
 
+	List<ComplaintModel> _applySeverity(List<ComplaintModel> all) {
+		if (_severity == null) return all;
+		return all.where((c) => c.severity.toUpperCase() == _severity).toList();
+	}
+
+	Widget _severityChips() {
+		const severities = ['All', 'HIGH', 'MEDIUM', 'LOW'];
+		return SizedBox(
+			height: 44,
+			child: ListView.separated(
+				scrollDirection: Axis.horizontal,
+				padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+				itemCount: severities.length,
+				separatorBuilder: (_, __) => const SizedBox(width: 8),
+				itemBuilder: (_, i) {
+					final s = severities[i];
+					final selected = (s == 'All' && _severity == null) || s == _severity;
+					return ScmsChip(
+						label: s == 'All' ? 'All' : s,
+						isSelected: selected,
+						selectedColor: s == 'All' ? AppColors.primary : AppColors.severityColor(s),
+						onTap: () => setState(() => _severity = s == 'All' ? null : s),
+					);
+				},
+			),
+		);
+	}
+
 	@override
 	Widget build(BuildContext context) {
-		return Scaffold(
-			appBar: AppBar(
-				title: const Text('SR Review'),
-				actions: [
-					Container(
-						margin: const EdgeInsets.only(right: 16),
-						padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-						decoration: BoxDecoration(
-							color: AppColors.surfaceVariant,
-							borderRadius: BorderRadius.circular(12),
-						),
-						child: Text('SR', style: AppTextStyles.labelSmall),
-					),
-				],
-			),
+		return AppScaffold(
 			body: BlocConsumer<SrReviewBloc, SrReviewState>(
 				listener: (context, state) {
 					if (state is SrReviewLoaded && state.actionError != null) {
@@ -70,14 +90,34 @@ class _SrDashboardPageState extends State<SrDashboardPage> {
 						);
 					}
 					if (state is SrReviewLoaded) {
+						final filtered = _applySeverity(state.complaints);
 						return RefreshIndicator(
 							onRefresh: () async =>
 									context.read<SrReviewBloc>().add(RefreshPendingReviews()),
 							child: ListView.builder(
 								padding: const EdgeInsets.only(bottom: 24),
-								itemCount: state.complaints.length,
+								itemCount: filtered.length + 1,
 								itemBuilder: (context, index) {
-									final complaint = state.complaints[index];
+									if (index == 0) {
+										return Column(
+											crossAxisAlignment: CrossAxisAlignment.start,
+											children: [
+												SrSummaryHeader(complaints: state.complaints),
+												const SizedBox(height: 8),
+												_severityChips(),
+												if (filtered.isEmpty)
+													Padding(
+														padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+														child: Text(
+															'No pending complaints match this severity.',
+															style: AppTextStyles.bodySmall
+																	.copyWith(color: AppColors.textSecondary),
+														),
+													),
+											],
+										);
+									}
+									final complaint = filtered[index - 1];
 									final isProcessing = state.processingId == complaint.id;
 									return Column(
 										children: [

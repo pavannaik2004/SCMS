@@ -20,20 +20,41 @@ class AnalyticsModel {
   });
 
   factory AnalyticsModel.fromJson(Map<String, dynamic> json) {
+    // The backend `/analytics/summary` returns:
+    //   { totalComplaints, activeComplaints, resolvedComplaints, slaBreachedCount,
+    //     averageResolutionTimeHours, departmentStats:[{departmentName,count}],
+    //     categoryStats:[{categoryName,count}] }
+    // Fall back to legacy keys where present for resilience.
+    final total = json['totalComplaints'] as int? ?? 0;
+    final resolved = json['resolvedComplaints'] as int? ?? 0;
+    final providedRate = (json['resolutionRatePercent'] as num?)?.toDouble();
+
+    final deptList = (json['departmentStats'] ?? json['byDepartment']) as List<dynamic>?;
+    final catList = (json['categoryStats'] ?? json['byCategory']) as List<dynamic>?;
+
     return AnalyticsModel(
-      totalActiveComplaints: json['totalActiveComplaints'] as int? ?? 0,
-      slaBreachesLast7Days: json['slaBreachesLast7Days'] as int? ?? 0,
-      avgResolutionTimeHours: (json['avgResolutionTimeHours'] as num?)?.toDouble() ?? 0,
-      resolutionRatePercent: (json['resolutionRatePercent'] as num?)?.toDouble() ?? 0,
-      byDepartment: (json['byDepartment'] as List<dynamic>?)
+      totalActiveComplaints:
+          json['activeComplaints'] as int? ?? json['totalActiveComplaints'] as int? ?? 0,
+      slaBreachesLast7Days:
+          json['slaBreachedCount'] as int? ?? json['slaBreachesLast7Days'] as int? ?? 0,
+      avgResolutionTimeHours:
+          (json['averageResolutionTimeHours'] ?? json['avgResolutionTimeHours'] as num?)
+                  ?.toDouble() ??
+              0,
+      resolutionRatePercent:
+          providedRate ?? (total > 0 ? (resolved / total) * 100 : 0),
+      byDepartment: deptList
               ?.map((d) => DepartmentStat.fromJson(d as Map<String, dynamic>))
-              .toList() ?? [],
-      byCategory: (json['byCategory'] as List<dynamic>?)
+              .toList() ??
+          [],
+      byCategory: catList
               ?.map((c) => CategoryStat.fromJson(c as Map<String, dynamic>))
-              .toList() ?? [],
+              .toList() ??
+          [],
       recentSlaBreaches: (json['recentSlaBreaches'] as List<dynamic>?)
               ?.map((c) => ComplaintModel.fromJson(c as Map<String, dynamic>))
-              .toList() ?? [],
+              .toList() ??
+          [],
     );
   }
 
@@ -53,27 +74,33 @@ class DepartmentStat {
   final int inProgressCount;
   final int resolvedCount;
 
+  /// Aggregate count when the backend returns a flat total per department
+  /// (rather than a per-status breakdown).
+  final int? _aggregateCount;
+
   const DepartmentStat({
     required this.departmentName,
     this.openCount = 0,
     this.inProgressCount = 0,
     this.resolvedCount = 0,
-  });
+    int? aggregateCount,
+  }) : _aggregateCount = aggregateCount;
 
-  int get totalCount => openCount + inProgressCount + resolvedCount;
+  int get totalCount =>
+      _aggregateCount ?? (openCount + inProgressCount + resolvedCount);
 
   factory DepartmentStat.fromJson(Map<String, dynamic> json) {
     return DepartmentStat(
-      departmentName: json['departmentName'] as String,
+      departmentName: json['departmentName'] as String? ?? 'Unknown',
       openCount: json['openCount'] as int? ?? 0,
       inProgressCount: json['inProgressCount'] as int? ?? 0,
       resolvedCount: json['resolvedCount'] as int? ?? 0,
+      aggregateCount: json['count'] as int?,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'departmentName': departmentName, 'openCount': openCount,
-    'inProgressCount': inProgressCount, 'resolvedCount': resolvedCount,
+    'departmentName': departmentName, 'count': totalCount,
   };
 }
 

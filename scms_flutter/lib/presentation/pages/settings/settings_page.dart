@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/app_preferences.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -8,6 +9,8 @@ import '../../../data/models/user_model.dart';
 import '../../bloc/auth/auth_bloc.dart';
 import '../../bloc/auth/auth_event.dart';
 import '../../bloc/auth/auth_state.dart';
+import '../../widgets/common/app_scaffold.dart';
+import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/scms_button.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -18,13 +21,12 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-	ThemeMode _themeMode = ThemeMode.system;
-	bool _notificationsEnabled = true;
+	final _prefs = AppPreferences.instance;
 
 	@override
 	Widget build(BuildContext context) {
-		return Scaffold(
-			appBar: AppBar(title: const Text('Settings')),
+		return AppScaffold(
+			appBar: const GradientAppBar(title: 'Settings', glass: true),
 			body: BlocBuilder<AuthBloc, AuthState>(
 				builder: (context, state) {
 					final user = state is AuthAuthenticated ? state.user : null;
@@ -109,8 +111,8 @@ class _SettingsPageState extends State<SettingsPage> {
 	Widget _buildNotificationToggle() {
 		return Card(
 			child: SwitchListTile(
-				value: _notificationsEnabled,
-				onChanged: (value) => setState(() => _notificationsEnabled = value),
+				value: _prefs.notificationsEnabled,
+				onChanged: (value) => setState(() => _prefs.setNotificationsEnabled(value)),
 				title: Text('Notifications', style: AppTextStyles.titleSmall),
 				subtitle: Text(
 					'Enable push updates and reminders',
@@ -130,7 +132,7 @@ class _SettingsPageState extends State<SettingsPage> {
 						Text('Theme', style: AppTextStyles.titleSmall),
 						const SizedBox(height: 8),
 						DropdownButtonFormField<ThemeMode>(
-							value: _themeMode,
+							value: _prefs.themeMode,
 							items: const [
 								DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
 								DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
@@ -138,7 +140,7 @@ class _SettingsPageState extends State<SettingsPage> {
 							],
 							onChanged: (mode) {
 								if (mode == null) return;
-								setState(() => _themeMode = mode);
+								setState(() => _prefs.setThemeMode(mode));
 							},
 							decoration: const InputDecoration(border: OutlineInputBorder()),
 						),

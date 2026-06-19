@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/repositories/complaint_repository.dart';
+import '../../widgets/common/app_scaffold.dart';
+import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/loading_overlay.dart';
 import '../../widgets/common/scms_button.dart';
 import '../../widgets/common/scms_text_field.dart';
@@ -30,8 +32,8 @@ class _RatingPageState extends State<RatingPage> {
   Widget build(BuildContext context) {
     return LoadingOverlay(
       isLoading: _isSubmitting,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Rate Resolution')),
+      child: AppScaffold(
+        appBar: const GradientAppBar(title: 'Rate Resolution', glass: true),
         body: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(

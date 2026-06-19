@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/constants/api_constants.dart';
@@ -9,6 +11,7 @@ import '../../models/department_model.dart';
 import '../../models/grammar_correction_model.dart';
 import '../../models/duplicate_check_model.dart';
 import '../../models/analytics_model.dart';
+import '../../models/user_model.dart';
 
 /// Remote data source for all complaint-related API calls
 class ComplaintRemoteDataSource {
@@ -16,6 +19,18 @@ class ComplaintRemoteDataSource {
 
   ComplaintRemoteDataSource({required DioClient dioClient})
       : _dioClient = dioClient;
+
+  /// Parses a complaint list response. After the Dio unwrap interceptor strips
+  /// the `{success, data}` envelope, list endpoints return either a raw list or
+  /// a paginated object `{ complaints: [...], pagination: {...} }`.
+  List<ComplaintModel> _parseComplaintList(dynamic data) {
+    final List<dynamic> list = data is Map<String, dynamic>
+        ? (data['complaints'] as List<dynamic>? ?? [])
+        : (data as List<dynamic>? ?? []);
+    return list
+        .map((json) => ComplaintModel.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
 
   // ─── Complaint CRUD ───────────────────────────────────────
 
@@ -37,10 +52,7 @@ class ComplaintRemoteDataSource {
         queryParameters: queryParams,
       );
 
-      final list = response.data as List<dynamic>;
-      return list
-          .map((json) => ComplaintModel.fromJson(json as Map<String, dynamic>))
-          .toList();
+      return _parseComplaintList(response.data);
     } on DioException catch (e) {
       throw ServerException(
         message: e.response?.data?['message'] ?? 'Failed to fetch complaints',
@@ -77,12 +89,14 @@ class ComplaintRemoteDataSource {
   }) async {
     try {
       final formData = FormData.fromMap({
-        'subject': subject,
+        // Backend expects `title`; keep `subject` for backward-compat.
+        'title': subject,
         'description': description,
         'location': location,
         'categoryId': categoryId,
         'severity': severity,
-        if (tags != null) 'tags': tags,
+        // Backend parses tags via JSON.parse first, falling back to CSV.
+        if (tags != null && tags.isNotEmpty) 'tags': jsonEncode(tags),
         if (latitude != null) 'gpsLatitude': latitude,
         if (longitude != null) 'gpsLongitude': longitude,
         if (placeName != null) 'gpsPlaceName': placeName,
@@ -91,7 +105,8 @@ class ComplaintRemoteDataSource {
       if (photoPaths != null) {
         for (final path in photoPaths) {
           formData.files.add(MapEntry(
-            'photos',
+            // Multer is configured as upload.array('media', 5).
+            'media',
             await MultipartFile.fromFile(path),
           ));
         }
@@ -112,6 +127,43 @@ class ComplaintRemoteDataSource {
     }
   }
 
+  /// List staff members (Admin/Dept Head) for the assignment picker.
+  Future<List<UserModel>> getStaff() async {
+    try {
+      final response = await _dioClient.dio.get(
+        ApiConstants.users,
+        queryParameters: {'role': 'ROLE_STAFF'},
+      );
+      final data = response.data;
+      final list = data is Map<String, dynamic>
+          ? (data['users'] as List<dynamic>? ?? [])
+          : (data as List<dynamic>? ?? []);
+      return list
+          .map((j) => UserModel.fromJson(j as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw ServerException(
+        message: e.response?.data?['message'] ?? 'Failed to fetch staff',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// Assign a complaint to a staff member (Admin/Dept Head).
+  Future<void> assignComplaint(String id, String assignedToId) async {
+    try {
+      await _dioClient.dio.patch(
+        ApiConstants.complaintAssign(id),
+        data: {'assignedToId': assignedToId},
+      );
+    } on DioException catch (e) {
+      throw ServerException(
+        message: e.response?.data?['message'] ?? 'Failed to assign complaint',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   /// Update complaint status (Staff/Admin)
   Future<void> updateComplaintStatus(
     String id, {
@@ -121,7 +173,7 @@ class ComplaintRemoteDataSource {
     try {
       await _dioClient.dio.patch(
         ApiConstants.complaintStatus(id),
-        data: {'newStatus': newStatus, 'notes': notes},
+        data: {'status': newStatus, if (notes != null) 'notes': notes},
       );
     } on DioException catch (e) {
       throw ServerException(
@@ -136,7 +188,7 @@ class ComplaintRemoteDataSource {
     try {
       await _dioClient.dio.post(
         ApiConstants.complaintRating(id),
-        data: {'rating': rating, 'comment': comment},
+        data: {'rating': rating, if (comment != null) 'ratingComment': comment},
       );
     } on DioException catch (e) {
       throw ServerException(
@@ -146,7 +198,9 @@ class ComplaintRemoteDataSource {
     }
   }
 
-  /// Get all complaints (Admin only) with filters
+  /// Get the system-wide complaint feed (read-only) with filters + search.
+  /// `scope=all` tells the backend to bypass role-scoping so every role sees
+  /// every complaint. Write actions remain guarded server-side.
   Future<List<ComplaintModel>> getAllComplaints({
     String? status,
     String? departmentId,
@@ -154,17 +208,19 @@ class ComplaintRemoteDataSource {
     String? severity,
     String? search,
     int page = 0,
-    int size = 10,
+    int size = 20,
   }) async {
     try {
       final queryParams = <String, dynamic>{
+        'scope': 'all',
         'page': page,
         'size': size,
         if (status != null) 'status': status,
         if (departmentId != null) 'departmentId': departmentId,
         if (categoryId != null) 'categoryId': categoryId,
         if (severity != null) 'severity': severity,
-        if (search != null) 'search': search,
+        // Backend text search param is `q` (title/description/complaintNumber).
+        if (search != null && search.trim().isNotEmpty) 'q': search.trim(),
       };
 
       final response = await _dioClient.dio.get(
@@ -172,10 +228,7 @@ class ComplaintRemoteDataSource {
         queryParameters: queryParams,
       );
 
-      final list = response.data as List<dynamic>;
-      return list
-          .map((json) => ComplaintModel.fromJson(json as Map<String, dynamic>))
-          .toList();
+      return _parseComplaintList(response.data);
     } on DioException catch (e) {
       throw ServerException(
         message: e.response?.data?['message'] ?? 'Failed to fetch complaints',

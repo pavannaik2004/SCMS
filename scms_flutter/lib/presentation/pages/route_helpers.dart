@@ -1,19 +1,17 @@
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/route_constants.dart';
-import 'admin/admin_complaints_list_page.dart';
-import 'admin/admin_dashboard_page.dart';
 import 'settings/settings_page.dart';
-import 'sr/sr_dashboard_page.dart';
+import 'shell/main_shell.dart';
 import 'sr/sr_review_detail_page.dart';
 import 'staff/staff_complaint_detail_page.dart';
-import 'staff/staff_dashboard_page.dart';
 
-// REQUEST TO PAVAN: add route constant for /admin/complaints if desired.
+// Every role's home routes to the shared [MainShell] (role-aware Dashboard +
+// All / Stats / Profile tabs). The role-specific detail screens stay as-is.
 final List<GoRoute> prabhavaRoutes = [
   GoRoute(
     path: Routes.staffHome,
-    builder: (context, state) => const StaffDashboardPage(),
+    builder: (context, state) => const MainShell(),
   ),
   GoRoute(
     path: Routes.staffComplaintDetail,
@@ -24,7 +22,7 @@ final List<GoRoute> prabhavaRoutes = [
   ),
   GoRoute(
     path: Routes.srHome,
-    builder: (context, state) => const SrDashboardPage(),
+    builder: (context, state) => const MainShell(),
   ),
   GoRoute(
     path: Routes.srReviewDetail,
@@ -35,11 +33,7 @@ final List<GoRoute> prabhavaRoutes = [
   ),
   GoRoute(
     path: Routes.adminHome,
-    builder: (context, state) => const AdminDashboardPage(),
-  ),
-  GoRoute(
-    path: '/admin/complaints',
-    builder: (context, state) => const AdminComplaintsListPage(),
+    builder: (context, state) => const MainShell(),
   ),
   GoRoute(
     path: Routes.settings,

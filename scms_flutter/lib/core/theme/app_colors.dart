@@ -4,12 +4,13 @@ class AppColors {
   AppColors._();
 
   // ─── Primary Brand Colors ─────────────────────────────────
-  static const Color primary = Color(0xFF1A56DB);
-  static const Color primaryLight = Color(0xFF4D7FE0);
-  static const Color primaryDark = Color(0xFF1240B0);
+  // Indigo/violet identity (refreshed from the original blue/teal).
+  static const Color primary = Color(0xFF4F46E5); // indigo-600
+  static const Color primaryLight = Color(0xFF818CF8); // indigo-400
+  static const Color primaryDark = Color(0xFF3730A3); // indigo-800
 
   // ─── Accent ───────────────────────────────────────────────
-  static const Color accent = Color(0xFF00C896);
+  static const Color accent = Color(0xFF8B5CF6); // violet-500
 
   // ─── Status Colors ────────────────────────────────────────
   static const Color statusOpen = Color(0xFF6B7280);
@@ -46,6 +47,46 @@ class AppColors {
   static const Color confidenceHigh = Color(0xFF10B981);
   static const Color confidenceMedium = Color(0xFFF59E0B);
   static const Color confidenceLow = Color(0xFFEF4444);
+
+  // ─── Glass / surface tokens ───────────────────────────────
+  // Frosted-glass surfaces are built with BackdropFilter + these translucent
+  // fills/borders. Keep dense text on solid surfaces; glass is for chrome,
+  // cards over the gradient backdrop, and hero panels.
+  static const Color glassFillLight = Color(0x99FFFFFF); // ~60% white
+  static const Color glassFillDark = Color(0x401F2937); // ~25% dark surface
+  static const Color glassBorderLight = Color(0x4DFFFFFF); // ~30% white
+  static const Color glassBorderDark = Color(0x33FFFFFF); // ~20% white
+  static const double glassBlurSigma = 18.0;
+
+  // ─── Brand surfaces (solid) ───────────────────────────────
+  // Premium look uses SOLID brand fills — no gradients on screen.
+  // A slightly deeper indigo is available for subtle layering (e.g. a darker
+  // hero footer or pressed state) without ever blending two hues.
+  static const Color primarySurface = primary; // indigo-600 header/hero fill
+  static const Color primaryDeep = Color(0xFF4338CA); // indigo-700
+
+  /// Soft full-screen backdrop behind glass surfaces (light theme).
+  /// Kept as a [LinearGradient] for API stability, but flattened to a single
+  /// tone so nothing renders as a gradient.
+  static const LinearGradient backdropLight = LinearGradient(
+    colors: [Color(0xFFF6F7FB), Color(0xFFF6F7FB)],
+  );
+
+  /// Soft full-screen backdrop behind glass surfaces (dark theme), flattened.
+  static const LinearGradient backdropDark = LinearGradient(
+    colors: [Color(0xFF111827), Color(0xFF111827)],
+  );
+
+  // ─── Legacy gradient tokens (deprecated, unused on screen) ────────────────
+  // Retained only so any stray reference still compiles. Do not use for new
+  // surfaces — the app is solid + frosted-glass, no gradient fills.
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [primary, primary],
+  );
+
+  static const LinearGradient accentGradient = LinearGradient(
+    colors: [accent, accent],
+  );
 
   // ─── Helper Methods ───────────────────────────────────────
 
