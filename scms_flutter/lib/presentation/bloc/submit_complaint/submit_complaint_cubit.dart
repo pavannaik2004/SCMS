@@ -66,12 +66,28 @@ class SubmitComplaintCubit extends Cubit<SubmitComplaintState> {
     ));
   }
 
+  /// Dismiss the AI category suggestion without applying it (keeps the user's
+  /// own category). Hides the banner by marking the suggestion as handled.
+  void dismissAiPreview() {
+    emit(state.copyWith(aiPreviewAccepted: true));
+  }
+
+  /// Dismiss the grammar-correction banner without applying the suggestion.
+  void dismissGrammar() {
+    emit(state.copyWith(grammarDismissed: true));
+  }
+
   // ─── AI Integration ───────────────────────────────────────
 
   Future<void> _checkGrammar(String text) async {
     emit(state.copyWith(isCheckingGrammar: true));
     final result = await _repository.grammarCheck(text);
-    emit(state.copyWith(grammarResult: result, isCheckingGrammar: false));
+    // A fresh correction re-shows the banner even if a prior one was dismissed.
+    emit(state.copyWith(
+      grammarResult: result,
+      grammarDismissed: false,
+      isCheckingGrammar: false,
+    ));
 
     // After grammar, auto-categorize
     if (text.length >= AppConstants.minCharsForCategorize) {

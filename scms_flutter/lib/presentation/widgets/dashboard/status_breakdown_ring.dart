@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/extensions.dart';
 import '../../../data/models/complaint_model.dart';
 import '../common/glass_card.dart';
 
@@ -109,7 +110,7 @@ class StatusBreakdownRing extends StatelessWidget {
                     children: entries
                         .map((e) => _LegendRow(
                               color: AppColors.statusColor(e.key),
-                              label: _pretty(e.key),
+                              label: e.key.toStatusLabel(),
                               count: e.value,
                               secondary: secondary,
                             ))
@@ -122,11 +123,6 @@ class StatusBreakdownRing extends StatelessWidget {
       ),
     );
   }
-
-  String _pretty(String status) => status
-      .split('_')
-      .map((w) => w.isEmpty ? w : w[0] + w.substring(1).toLowerCase())
-      .join(' ');
 }
 
 class _LegendRow extends StatelessWidget {

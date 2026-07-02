@@ -108,8 +108,10 @@ router.get('/summary', async (req, res, next) => {
         updatedAt: { gte: sevenDaysAgo }
       },
       include: {
+        // Aggregated analytics are readable by every role, so do NOT expose
+        // submitter email here — name/picture is enough for the dashboard list.
         submittedBy: {
-          select: { id: true, name: true, email: true, picture: true }
+          select: { id: true, name: true, picture: true }
         },
         mediaItems: true
       },

@@ -127,6 +127,52 @@ class ComplaintRemoteDataSource {
     }
   }
 
+  /// Edit an existing complaint (submitter-only, enforced server-side).
+  /// Only non-null fields are sent, so a partial update is supported.
+  Future<ComplaintModel> updateComplaint(
+    String id, {
+    String? subject,
+    String? description,
+    String? location,
+    String? categoryId,
+    String? severity,
+    List<String>? tags,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        // Backend expects `title`, not `subject`.
+        if (subject != null) 'title': subject,
+        if (description != null) 'description': description,
+        if (location != null) 'location': location,
+        if (categoryId != null) 'categoryId': categoryId,
+        if (severity != null) 'severity': severity,
+        if (tags != null) 'tags': tags,
+      };
+      final response = await _dioClient.dio.patch(
+        ApiConstants.complaintById(id),
+        data: body,
+      );
+      return ComplaintModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ServerException(
+        message: e.response?.data?['message'] ?? 'Failed to update complaint',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// Delete a complaint (submitter-only, enforced server-side).
+  Future<void> deleteComplaint(String id) async {
+    try {
+      await _dioClient.dio.delete(ApiConstants.complaintById(id));
+    } on DioException catch (e) {
+      throw ServerException(
+        message: e.response?.data?['message'] ?? 'Failed to delete complaint',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   /// List staff members (Admin/Dept Head) for the assignment picker.
   Future<List<UserModel>> getStaff() async {
     try {

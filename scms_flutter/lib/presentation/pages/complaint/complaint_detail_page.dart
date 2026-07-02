@@ -60,9 +60,12 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
               authState is AuthAuthenticated ? authState.user.role : null;
           final canAssign =
               role == 'ROLE_ADMIN' || role == 'ROLE_DEPT_HEAD';
+          // The submitter can edit/delete their own complaint.
+          final isOwner = authState is AuthAuthenticated &&
+              authState.user.id == c.submittedById;
           return CustomScrollView(
             slivers: [
-              _buildHeader(context, c, canAssign: canAssign),
+              _buildHeader(context, c, canAssign: canAssign, isOwner: isOwner),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -167,7 +170,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
   }
 
   Widget _buildHeader(BuildContext context, ComplaintModel c,
-      {bool canAssign = false}) {
+      {bool canAssign = false, bool isOwner = false}) {
     final statusColor = c.status.toStatusColor();
     return SliverAppBar(
       pinned: true,
@@ -181,6 +184,18 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
             icon: const Icon(Icons.person_add_alt_1_rounded),
             tooltip: c.assignedToName == null ? 'Assign to staff' : 'Reassign',
             onPressed: () => _showAssignSheet(context, c),
+          ),
+        if (isOwner)
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit complaint',
+            onPressed: () => _showEditSheet(context, c),
+          ),
+        if (isOwner)
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded),
+            tooltip: 'Delete complaint',
+            onPressed: () => _confirmDelete(context, c),
           ),
       ],
       flexibleSpace: FlexibleSpaceBar(
@@ -368,6 +383,66 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
     }
   }
 
+  void _showEditSheet(BuildContext pageContext, ComplaintModel c) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: pageContext,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(pageContext).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => _EditComplaintSheet(complaint: c),
+    );
+    if (updated == true && mounted) {
+      context
+          .read<ComplaintBloc>()
+          .add(LoadComplaintDetail(complaintId: c.id));
+    }
+  }
+
+  void _confirmDelete(BuildContext pageContext, ComplaintModel c) async {
+    final confirmed = await showDialog<bool>(
+      context: pageContext,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete complaint?'),
+        content: Text(
+          'This will permanently delete "${c.subject}". This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.severityHigh),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _deleteComplaint(c.id);
+    }
+  }
+
+  Future<void> _deleteComplaint(String id) async {
+    final repository = context.read<ComplaintRepository>();
+    try {
+      await repository.deleteComplaint(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Complaint deleted.')),
+      );
+      context.pop();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete complaint.')),
+      );
+    }
+  }
+
   Widget _buildRatingCard(ComplaintModel c) {
     return _Section(
       title: 'Your Rating',
@@ -461,6 +536,145 @@ class _Section extends StatelessWidget {
           ],
           child,
         ],
+      ),
+    );
+  }
+}
+
+/// Bottom-sheet form for the submitter to edit their own complaint.
+/// Edits title/description/location/severity; performs the update itself and
+/// pops `true` on success so the detail page can reload.
+class _EditComplaintSheet extends StatefulWidget {
+  final ComplaintModel complaint;
+  const _EditComplaintSheet({required this.complaint});
+
+  @override
+  State<_EditComplaintSheet> createState() => _EditComplaintSheetState();
+}
+
+class _EditComplaintSheetState extends State<_EditComplaintSheet> {
+  late final TextEditingController _subjectCtrl;
+  late final TextEditingController _descriptionCtrl;
+  late final TextEditingController _locationCtrl;
+  late String _severity;
+  bool _saving = false;
+
+  static const _severities = ['LOW', 'MEDIUM', 'HIGH'];
+
+  @override
+  void initState() {
+    super.initState();
+    _subjectCtrl = TextEditingController(text: widget.complaint.subject);
+    _descriptionCtrl =
+        TextEditingController(text: widget.complaint.description);
+    _locationCtrl = TextEditingController(text: widget.complaint.location);
+    _severity = _severities.contains(widget.complaint.severity)
+        ? widget.complaint.severity
+        : 'MEDIUM';
+  }
+
+  @override
+  void dispose() {
+    _subjectCtrl.dispose();
+    _descriptionCtrl.dispose();
+    _locationCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final subject = _subjectCtrl.text.trim();
+    final description = _descriptionCtrl.text.trim();
+    final location = _locationCtrl.text.trim();
+    if (subject.isEmpty || description.isEmpty || location.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Title, description and location are required.')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await context.read<ComplaintRepository>().updateComplaint(
+            widget.complaint.id,
+            subject: subject,
+            description: description,
+            location: location,
+            severity: _severity,
+          );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update complaint.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Edit complaint', style: AppTextStyles.titleLarge),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _subjectCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Title',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _descriptionCtrl,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+                alignLabelWithHint: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _locationCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Location',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _severity,
+              decoration: const InputDecoration(
+                labelText: 'Severity',
+                border: OutlineInputBorder(),
+              ),
+              items: _severities
+                  .map((s) => DropdownMenuItem(
+                        value: s,
+                        child: Text(s.capitalize()),
+                      ))
+                  .toList(),
+              onChanged: _saving
+                  ? null
+                  : (v) => setState(() => _severity = v ?? _severity),
+            ),
+            const SizedBox(height: 20),
+            ScmsButton(
+              label: 'Save Changes',
+              icon: Icons.check_rounded,
+              isLoading: _saving,
+              onPressed: _saving ? null : _save,
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }

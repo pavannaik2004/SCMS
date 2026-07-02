@@ -37,6 +37,43 @@ extension StringExtension on String {
     }
   }
 
+  /// Convert a `ROLE_*` string to a human-readable label. Single source of
+  /// truth shared across profile/stats/all-complaints so role labels never
+  /// drift between screens.
+  String toRoleLabel() {
+    switch (this) {
+      case 'ROLE_ADMIN':
+        return 'Administrator';
+      case 'ROLE_DEPT_HEAD':
+        return 'Department Head';
+      case 'ROLE_STAFF':
+        return 'Staff';
+      case 'ROLE_SR':
+        return 'Student Rep';
+      default:
+        return 'Student';
+    }
+  }
+
+  /// Convert a `ROLE_*` string to a short app-bar badge (e.g. `ADMIN`, `SR`).
+  /// Returns null for unknown roles so the badge can be hidden.
+  String? toRoleBadge() {
+    switch (this) {
+      case 'ROLE_ADMIN':
+        return 'ADMIN';
+      case 'ROLE_DEPT_HEAD':
+        return 'DEPT HEAD';
+      case 'ROLE_STAFF':
+        return 'STAFF';
+      case 'ROLE_SR':
+        return 'SR';
+      case 'ROLE_USER':
+        return 'STUDENT';
+      default:
+        return null;
+    }
+  }
+
   /// Convert status string to corresponding color
   Color toStatusColor() {
     return AppColors.statusColor(this);

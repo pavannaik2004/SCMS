@@ -28,6 +28,11 @@ class _MainShellState extends State<MainShell> {
   int _index = 0;
   final Map<int, Widget> _cache = {};
 
+  /// Role the cached dashboard tab (index 0) was built for. If the role
+  /// changes (late auth resolution, token-refresh re-auth), the cached
+  /// dashboard is invalidated so the correct role's view is rebuilt.
+  String? _cachedRole;
+
   Widget _dashboardFor(String role) {
     switch (role) {
       case 'ROLE_ADMIN':
@@ -60,6 +65,13 @@ class _MainShellState extends State<MainShell> {
     final authState = context.watch<AuthBloc>().state;
     final role =
         authState is AuthAuthenticated ? authState.user.role : 'ROLE_USER';
+
+    // The dashboard tab depends on role — drop its cache entry if the role
+    // changed so we never show a stale wrong-role dashboard.
+    if (_cachedRole != role) {
+      _cache.remove(0);
+      _cachedRole = role;
+    }
 
     // Build the active tab on demand; previously visited tabs stay cached.
     _cache.putIfAbsent(_index, () => _buildTab(_index, role));

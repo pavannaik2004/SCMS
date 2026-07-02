@@ -6,8 +6,10 @@ import 'core/app_preferences.dart';
 import 'core/constants/route_constants.dart';
 import 'core/theme/app_theme.dart';
 
+import 'data/repositories/complaint_repository.dart';
 import 'presentation/bloc/auth/auth_bloc.dart';
 import 'presentation/bloc/auth/auth_state.dart';
+import 'presentation/bloc/complaint/complaint_bloc.dart';
 import 'presentation/pages/splash/splash_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
 import 'presentation/pages/auth/login_page.dart';
@@ -35,14 +37,16 @@ class ScmsApp extends StatefulWidget {
 
 class _ScmsAppState extends State<ScmsApp> {
   late final GoRouter _router;
+  late final GoRouterRefreshStream _refreshStream;
 
   @override
   void initState() {
     super.initState();
+    _refreshStream = GoRouterRefreshStream(context.read<AuthBloc>().stream);
     _router = GoRouter(
       navigatorKey: widget.navigatorKey,
       initialLocation: Routes.splash,
-      refreshListenable: GoRouterRefreshStream(context.read<AuthBloc>().stream),
+      refreshListenable: _refreshStream,
       redirect: (context, state) {
         final authState = context.read<AuthBloc>().state;
 
@@ -100,13 +104,25 @@ class _ScmsAppState extends State<ScmsApp> {
         ),
         GoRoute(
           path: Routes.myComplaints,
-          builder: (context, state) => const MyComplaintsPage(),
+          // Own ComplaintBloc instance so this page's status filter never
+          // pollutes the shared dashboard/profile list state.
+          builder: (context, state) => BlocProvider<ComplaintBloc>(
+            create: (ctx) =>
+                ComplaintBloc(repository: ctx.read<ComplaintRepository>()),
+            child: const MyComplaintsPage(),
+          ),
         ),
         GoRoute(
           path: Routes.complaintDetail,
+          // Own ComplaintBloc instance so loading a detail (which emits a
+          // detail state) never wipes the kept-alive dashboard's list state.
           builder: (context, state) {
             final id = state.pathParameters['id']!;
-            return ComplaintDetailPage(complaintId: id);
+            return BlocProvider<ComplaintBloc>(
+              create: (ctx) =>
+                  ComplaintBloc(repository: ctx.read<ComplaintRepository>()),
+              child: ComplaintDetailPage(complaintId: id),
+            );
           },
         ),
         GoRoute(
@@ -145,6 +161,13 @@ class _ScmsAppState extends State<ScmsApp> {
     );
   }
 
+  @override
+  void dispose() {
+    _router.dispose();
+    _refreshStream.dispose();
+    super.dispose();
+  }
+
   static String _getRoleHome(String role) {
     switch (role) {
       case 'ROLE_ADMIN':
@@ -166,7 +189,6 @@ class GoRouterRefreshStream extends ChangeNotifier {
   late final StreamSubscription<dynamic> _subscription;
 
   GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
     _subscription = stream.asBroadcastStream().listen(
           (dynamic _) => notifyListeners(),
         );

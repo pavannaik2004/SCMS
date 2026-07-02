@@ -73,7 +73,7 @@ class _StatsViewState extends State<_StatsView> {
       appBar: GradientAppBar(
         title: 'Statistics',
         glass: true,
-        roleBadge: _roleBadge(role),
+        roleBadge: role?.toRoleBadge(),
         actions: [
           IconButton(
             icon: const Icon(Icons.ios_share_rounded),
@@ -248,23 +248,6 @@ class _StatsViewState extends State<_StatsView> {
         );
       },
     );
-  }
-
-  String? _roleBadge(String? role) {
-    switch (role) {
-      case 'ROLE_ADMIN':
-        return 'ADMIN';
-      case 'ROLE_DEPT_HEAD':
-        return 'DEPT HEAD';
-      case 'ROLE_STAFF':
-        return 'STAFF';
-      case 'ROLE_SR':
-        return 'SR';
-      case 'ROLE_USER':
-        return 'STUDENT';
-      default:
-        return null;
-    }
   }
 }
 

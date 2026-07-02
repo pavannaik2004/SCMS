@@ -92,7 +92,17 @@ class AllComplaintsCubit extends Cubit<AllComplaintsState> {
         emit(AllComplaintsError(e.message, _query));
       }
     } catch (_) {
-      if (!append) {
+      if (append) {
+        // Non-Failure error while paginating: keep what we have and clear the
+        // spinner so loadMore() can be retried (otherwise it sticks forever).
+        _page -= 1;
+        emit(AllComplaintsLoaded(
+          items: List.of(_items),
+          query: _query,
+          hasMore: _hasMore,
+          loadingMore: false,
+        ));
+      } else {
         emit(AllComplaintsError('Failed to load complaints.', _query));
       }
     }

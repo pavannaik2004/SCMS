@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/extensions.dart';
 import '../../../data/models/complaint_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../bloc/auth/auth_bloc.dart';
@@ -249,7 +250,7 @@ class _Header extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  _roleLabel(user?.role),
+                  (user?.role ?? '').toRoleLabel().toUpperCase(),
                   style: AppTextStyles.labelMedium.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -263,20 +264,6 @@ class _Header extends StatelessWidget {
     );
   }
 
-  String _roleLabel(String? role) {
-    switch (role) {
-      case 'ROLE_ADMIN':
-        return 'ADMINISTRATOR';
-      case 'ROLE_DEPT_HEAD':
-        return 'DEPARTMENT HEAD';
-      case 'ROLE_STAFF':
-        return 'STAFF';
-      case 'ROLE_SR':
-        return 'STUDENT REP';
-      default:
-        return 'STUDENT';
-    }
-  }
 }
 
 class _StatTile extends StatelessWidget {

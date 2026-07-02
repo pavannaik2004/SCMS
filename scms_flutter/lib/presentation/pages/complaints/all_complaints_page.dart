@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/extensions.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/department_model.dart';
 import '../../../data/repositories/complaint_repository.dart';
@@ -166,7 +167,7 @@ class _AllComplaintsViewState extends State<_AllComplaintsView> {
       appBar: GradientAppBar(
         title: 'All Complaints',
         glass: true,
-        roleBadge: _roleBadge(role),
+        roleBadge: role?.toRoleBadge(),
         actions: [
           _FilterButton(
             activeCount: _facetCount(),
@@ -410,22 +411,6 @@ class _AllComplaintsViewState extends State<_AllComplaintsView> {
     );
   }
 
-  String? _roleBadge(String? role) {
-    switch (role) {
-      case 'ROLE_ADMIN':
-        return 'ADMIN';
-      case 'ROLE_DEPT_HEAD':
-        return 'DEPT HEAD';
-      case 'ROLE_STAFF':
-        return 'STAFF';
-      case 'ROLE_SR':
-        return 'SR';
-      case 'ROLE_USER':
-        return 'STUDENT';
-      default:
-        return null;
-    }
-  }
 }
 
 class _FilterButton extends StatelessWidget {

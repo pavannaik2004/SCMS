@@ -88,6 +88,42 @@ class ComplaintRepository {
     }
   }
 
+  /// Edit an existing complaint (submitter-only). Returns the updated model.
+  Future<ComplaintModel> updateComplaint(
+    String id, {
+    String? subject,
+    String? description,
+    String? location,
+    String? categoryId,
+    String? severity,
+    List<String>? tags,
+  }) async {
+    if (!await _networkInfo.isConnected) throw const NetworkFailure();
+    try {
+      return await _remoteDataSource.updateComplaint(
+        id,
+        subject: subject,
+        description: description,
+        location: location,
+        categoryId: categoryId,
+        severity: severity,
+        tags: tags,
+      );
+    } on ServerException catch (e) {
+      throw ServerFailure(message: e.message, statusCode: e.statusCode);
+    }
+  }
+
+  /// Delete a complaint (submitter-only).
+  Future<void> deleteComplaint(String id) async {
+    if (!await _networkInfo.isConnected) throw const NetworkFailure();
+    try {
+      await _remoteDataSource.deleteComplaint(id);
+    } on ServerException catch (e) {
+      throw ServerFailure(message: e.message, statusCode: e.statusCode);
+    }
+  }
+
   Future<List<UserModel>> getStaff() async {
     if (!await _networkInfo.isConnected) throw const NetworkFailure();
     try {

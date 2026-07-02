@@ -494,3 +494,20 @@ uvicorn main:app --reload --port 8000
 *• Admin: assign/reassign-to-staff from the complaint detail (staff picker sheet → `PATCH /:id/assign`); chart category drill-down; CSV export of analytics.*
 *• Data layer: `ComplaintRemoteDataSource`/`ComplaintRepository` gained `getStaff()` + `assignComplaint()`; `getAllComplaints` now sends `scope=all` + `q`.*
 *• `flutter analyze`: No issues found. Backend routes pass `node --check`.*
+
+---
+
+*Last updated: 2026-06-19 by Claude Code (AI agent) — Owner edit/delete feature + code-review fixes. Crosses team ownership lines (backend `complaints.js`/`analytics.js`, Prabhava's `profile`/`stats`/`settings` already touched in prior commit) — done at user's request.*
+*### Feature — submitter can edit & delete their own complaint*
+*• `complaints.js`: added owner-only `PATCH /:id` (edit title/description/location/category/severity/tags; re-resolves department on category change; logs a timeline entry; refreshes the pgvector embedding when description changes) and `DELETE /:id` (deletes media + updates first since schema has no cascade). Both 403 for non-submitters.*
+*• `ComplaintRemoteDataSource`/`ComplaintRepository`: added `updateComplaint()` + `deleteComplaint()`.*
+*• `complaint_detail_page.dart`: owner-only Edit (bottom-sheet form) + Delete (confirm dialog) actions in the app bar; reload-on-edit, pop-on-delete.*
+*### Code-review fixes (from /code-review high)*
+*• SECURITY: `analytics.js` `recentSlaBreaches` no longer exposes submitter `email` (kept name/picture) — was leaking PII to every authenticated role.*
+*• `all_complaints_cubit.dart`: non-`Failure` error during `loadMore` no longer leaves `loadingMore:true` stuck forever (mirrors the `on Failure` append-recovery).*
+*• `main_shell.dart`: dashboard tab cache now invalidated on role change (was caching a wrong-role/`ROLE_USER` dashboard permanently).*
+*• `analytics_model.dart`: fixed `as num?` operator-precedence so the primary `averageResolutionTimeHours` key is cast, not passed through `??` uncast.*
+*• `app.dart`: pushed `/complaint/:id` + `/complaints/mine` routes now get their own scoped `ComplaintBloc` so opening a detail / filtering never wipes the kept-alive dashboard's list state; `GoRouterRefreshStream` + `_router` now disposed in `_ScmsAppState.dispose()`.*
+*• `submit_complaint`: AI-suggestion and grammar banners' "dismiss" buttons now work (`dismissAiPreview()`/`dismissGrammar()` + `grammarDismissed` flag) — were no-ops.*
+*• Cleanup: extracted shared `String.toRoleLabel()`/`toRoleBadge()` (extensions.dart) adopted by profile/stats/all-complaints (removed 3 duplicated role switches); `status_breakdown_ring` legend now uses canonical `toStatusLabel()` instead of its own `_pretty()`.*
+*• `flutter analyze`: No issues found. Backend routes pass `node --check`.*

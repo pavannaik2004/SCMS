@@ -11,6 +11,7 @@ class SubmitComplaintState {
   final String? severity;
   final List<File> photos;
   final GrammarCorrectionModel? grammarResult;
+  final bool grammarDismissed;
   final Map<String, dynamic>? aiPreview;
   final bool aiPreviewAccepted;
   final DuplicateCheckModel? duplicateResult;
@@ -30,6 +31,7 @@ class SubmitComplaintState {
     this.severity,
     this.photos = const [],
     this.grammarResult,
+    this.grammarDismissed = false,
     this.aiPreview,
     this.aiPreviewAccepted = false,
     this.duplicateResult,
@@ -50,6 +52,7 @@ class SubmitComplaintState {
     String? severity,
     List<File>? photos,
     GrammarCorrectionModel? grammarResult,
+    bool? grammarDismissed,
     Map<String, dynamic>? aiPreview,
     bool? aiPreviewAccepted,
     DuplicateCheckModel? duplicateResult,
@@ -69,6 +72,7 @@ class SubmitComplaintState {
       severity: severity ?? this.severity,
       photos: photos ?? this.photos,
       grammarResult: grammarResult ?? this.grammarResult,
+      grammarDismissed: grammarDismissed ?? this.grammarDismissed,
       aiPreview: aiPreview ?? this.aiPreview,
       aiPreviewAccepted: aiPreviewAccepted ?? this.aiPreviewAccepted,
       duplicateResult: duplicateResult ?? this.duplicateResult,

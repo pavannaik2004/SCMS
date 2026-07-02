@@ -31,6 +31,18 @@ const ratingSchema = z.object({
   ratingComment: z.string().optional()
 });
 
+// Fields the submitter is allowed to edit on their own complaint.
+const editComplaintSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
+  location: z.string().min(1).optional(),
+  categoryId: z.string().uuid().optional(),
+  severity: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+  tags: z.array(z.string()).optional()
+}).refine((data) => Object.keys(data).length > 0, {
+  message: 'At least one field must be provided to update.'
+});
+
 // Guard all endpoints
 router.use(authenticate);
 
@@ -546,6 +558,110 @@ router.post('/:id/rating', validateBody(ratingSchema), async (req, res, next) =>
 
     return sendSuccess(res, updated);
 
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PATCH /api/complaints/:id
+ * Edit a complaint's own content. Restricted to the submitter (owner-only).
+ * Other roles mutate via their dedicated routes (status/assign/rating).
+ */
+router.patch('/:id', validateBody(editComplaintSchema), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { title, description, location, categoryId, severity, tags } = req.body;
+
+    const complaint = await prisma.complaint.findUnique({ where: { id } });
+    if (!complaint) {
+      return sendError(res, 404, 'Complaint not found.');
+    }
+
+    // Only the person who filed the complaint may edit it.
+    if (complaint.submittedById !== req.user.id) {
+      return sendError(res, 403, 'Forbidden: Only the submitter can edit this complaint.');
+    }
+
+    // Build the update payload from provided fields only.
+    const data = {};
+    if (title !== undefined) data.title = title;
+    if (description !== undefined) data.description = description;
+    if (location !== undefined) data.location = location;
+    if (severity !== undefined) data.severity = severity;
+    if (tags !== undefined) data.tags = tags;
+
+    // If the category changes, re-resolve the default department for it.
+    if (categoryId !== undefined && categoryId !== complaint.categoryId) {
+      const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { defaultDepartmentId: true }
+      });
+      if (!category) {
+        return sendError(res, 400, 'Bad Request: Unknown category.');
+      }
+      data.categoryId = categoryId;
+      data.departmentId = category.defaultDepartmentId;
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedRecord = await tx.complaint.update({ where: { id }, data });
+
+      await tx.complaintUpdate.create({
+        data: {
+          complaintId: id,
+          updatedById: req.user.id,
+          updatedByName: req.user.email,
+          updatedByRole: req.user.role,
+          previousStatus: complaint.status,
+          newStatus: complaint.status,
+          notes: 'Complaint details edited by the submitter.'
+        }
+      });
+
+      return updatedRecord;
+    });
+
+    // Refresh the duplicate-detection embedding if the description changed.
+    if (data.description) {
+      generateAndStoreEmbedding(data.description, id).catch((err) => {
+        logger.error(`Failed to refresh embedding for complaint ${id}: ${err.message}`);
+      });
+    }
+
+    await enrichComplaints(updated);
+
+    return sendSuccess(res, updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/complaints/:id
+ * Delete a complaint. Restricted to the submitter (owner-only). Child rows
+ * (media + timeline) are removed first since the schema has no cascade.
+ */
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const complaint = await prisma.complaint.findUnique({ where: { id } });
+    if (!complaint) {
+      return sendError(res, 404, 'Complaint not found.');
+    }
+
+    if (complaint.submittedById !== req.user.id) {
+      return sendError(res, 403, 'Forbidden: Only the submitter can delete this complaint.');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.mediaItem.deleteMany({ where: { complaintId: id } });
+      await tx.complaintUpdate.deleteMany({ where: { complaintId: id } });
+      await tx.complaint.delete({ where: { id } });
+    });
+
+    return sendSuccess(res, { id, deleted: true });
   } catch (error) {
     next(error);
   }

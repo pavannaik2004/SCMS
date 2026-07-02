@@ -38,7 +38,8 @@ class AnalyticsModel {
       slaBreachesLast7Days:
           json['slaBreachedCount'] as int? ?? json['slaBreachesLast7Days'] as int? ?? 0,
       avgResolutionTimeHours:
-          (json['averageResolutionTimeHours'] ?? json['avgResolutionTimeHours'] as num?)
+          ((json['averageResolutionTimeHours'] as num?) ??
+                      (json['avgResolutionTimeHours'] as num?))
                   ?.toDouble() ??
               0,
       resolutionRatePercent:

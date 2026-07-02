@@ -89,11 +89,13 @@ class _SubmitComplaintPageState extends State<SubmitComplaintPage> {
                       padding: EdgeInsets.symmetric(vertical: 8),
                       child: LinearProgressIndicator(),
                     ),
-                  if (state.grammarResult != null && state.grammarResult!.hasCorrections)
+                  if (state.grammarResult != null &&
+                      state.grammarResult!.hasCorrections &&
+                      !state.grammarDismissed)
                     GrammarCorrectionBanner(
                       correction: state.grammarResult!,
                       onAccept: cubit.applyGrammarCorrection,
-                      onDismiss: () {},
+                      onDismiss: cubit.dismissGrammar,
                     ),
                   const SizedBox(height: 16),
 
@@ -160,7 +162,7 @@ class _SubmitComplaintPageState extends State<SubmitComplaintPage> {
                     _AiPreviewBanner(
                       preview: state.aiPreview!,
                       onAccept: cubit.acceptAiPreview,
-                      onDismiss: () {},
+                      onDismiss: cubit.dismissAiPreview,
                     ),
                   const SizedBox(height: 20),
 
