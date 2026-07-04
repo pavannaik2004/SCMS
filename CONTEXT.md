@@ -528,3 +528,6 @@ uvicorn main:app --reload --port 8000
 *• My/All Complaints: clean app bars, pill filter chips; card + pagination/search/filter logic unchanged.*
 *• Detail: removed the solid-indigo header for a transparent app bar + large title + status pill; sections are soft surface cards; timeline/edit/delete/assign preserved. Rating + duplicates: clean app bars, surface cards, press-scale.*
 *• Shared: `ComplaintCard`, `QuickActionsRow`, and `GlassContainer` (→ every glass consumer) converted to solid iOS surface cards. `flutter analyze`: No issues found.*
+*### Phase C — staff/SR/admin/stats screens (iOS-clean)*
+*• Staff, SR, and admin dashboards required no structural change — they inherit the restyled `DashboardHero`, `SrSummaryHeader`, `StatsCard`, `ComplaintCard`, `ScmsButton`, and pill chips from Phase A (the payoff of the shared-component approach).*
+*• Swapped the remaining `GradientAppBar`s for clean transparent `AppBar`s on: staff task detail, SR review detail, admin complaints list, and the shared Statistics page (kept CSV/refresh actions; dropped the role-badge chrome). All BLoC events, status-update payloads (`status`), approve/reject flows, and CSV export unchanged. `flutter analyze`: No issues found.*
