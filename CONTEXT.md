@@ -521,3 +521,10 @@ uvicorn main:app --reload --port 8000
 *• New shared components: `PressableScale` (0.98 press feedback), `InsetGroupedSection` + `InsetListRow` (iOS grouped list), `LargeTitleScaffold` (collapsing blurred large-title nav), `CupertinoSegmentedTabs` (segmented filter).*
 *• Restyled `ScmsButton` (filled/tinted/destructive/text, flat), `StatusBadge` (tinted pill), `StatsCard` (surface card + count-up value), `DashboardHero` (large-title greeting + light stat tiles; no more indigo block).*
 *• `flutter analyze`: No issues found.*
+*### Phase B — student flow screens (iOS-clean)*
+*• Splash/onboarding/login: content on grouped background, accent app-icon tiles, Cupertino spinner; login drops the heavy glass card; all auth logic (Google + mock role bypass) unchanged.*
+*• Home dashboard: inherits the large-title `DashboardHero`, surface-card quick actions (press-scale), restyled complaint cards; blocs unchanged.*
+*• Submit: transparent app bar with Cancel, severity via `CupertinoSegmentedTabs`; cubit/debounce/AI banners/field names unchanged.*
+*• My/All Complaints: clean app bars, pill filter chips; card + pagination/search/filter logic unchanged.*
+*• Detail: removed the solid-indigo header for a transparent app bar + large title + status pill; sections are soft surface cards; timeline/edit/delete/assign preserved. Rating + duplicates: clean app bars, surface cards, press-scale.*
+*• Shared: `ComplaintCard`, `QuickActionsRow`, and `GlassContainer` (→ every glass consumer) converted to solid iOS surface cards. `flutter analyze`: No issues found.*
