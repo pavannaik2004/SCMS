@@ -511,3 +511,13 @@ uvicorn main:app --reload --port 8000
 *• `submit_complaint`: AI-suggestion and grammar banners' "dismiss" buttons now work (`dismissAiPreview()`/`dismissGrammar()` + `grammarDismissed` flag) — were no-ops.*
 *• Cleanup: extracted shared `String.toRoleLabel()`/`toRoleBadge()` (extensions.dart) adopted by profile/stats/all-complaints (removed 3 duplicated role switches); `status_breakdown_ring` legend now uses canonical `toStatusLabel()` instead of its own `_pretty()`.*
 *• `flutter analyze`: No issues found. Backend routes pass `node --check`.*
+
+---
+
+*Last updated: 2026-07-04 by Claude Code (AI agent) — **iOS-clean UI/UX redesign, Phase A (foundation)**. Cross-cutting presentation-only change (touches shared theme + widgets across all owners) — done at user's request. Spec: `docs/superpowers/specs/2026-07-04-ios-clean-ui-redesign-design.md`; plan: `docs/superpowers/plans/2026-07-04-ios-clean-ui-redesign.md`.*
+*### Phase A — design-system foundation (Apple system-blue, iOS-clean)*
+*• `app_colors.dart`: remapped tokens to the Apple system palette (accent `#007AFF`/`#0A84FF`, grouped backgrounds `#F2F2F7`/`#000000`, surfaces, hairline separators, system red/orange/green/etc.); status/severity/confidence colors now derive from system colors. Public API kept stable; added `groupedBackground*`, `separator*`, `system*`, `fillTinted()`.*
+*• `app_text_styles.dart` + `app_theme.dart`: retuned to the iOS type scale (Large Title 34 … Caption 12); themes now use grouped scaffold bg, transparent centered app bars, 12px flat cards/buttons (50px min), pill chips, 0.5px hairline dividers, and a Cupertino `PageTransitionsTheme` on both light & dark.*
+*• New shared components: `PressableScale` (0.98 press feedback), `InsetGroupedSection` + `InsetListRow` (iOS grouped list), `LargeTitleScaffold` (collapsing blurred large-title nav), `CupertinoSegmentedTabs` (segmented filter).*
+*• Restyled `ScmsButton` (filled/tinted/destructive/text, flat), `StatusBadge` (tinted pill), `StatsCard` (surface card + count-up value), `DashboardHero` (large-title greeting + light stat tiles; no more indigo block).*
+*• `flutter analyze`: No issues found.*
