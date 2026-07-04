@@ -57,17 +57,35 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 itemBuilder: (_, i) {
                   final slide = _slides[i];
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
+                  final accent =
+                      isDark ? AppColors.primaryLight : AppColors.primary;
+                  final secondary = isDark
+                      ? AppColors.textSecondaryDark
+                      : AppColors.textSecondary;
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(slide.icon, size: 120, color: AppColors.primary.withOpacity(0.8)),
-                        const SizedBox(height: 40),
-                        Text(slide.title, style: AppTextStyles.headlineMedium, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: Icon(slide.icon, size: 60, color: accent),
+                        ),
+                        const SizedBox(height: 44),
+                        Text(slide.title,
+                            style: AppTextStyles.headlineLarge,
+                            textAlign: TextAlign.center),
+                        const SizedBox(height: 14),
                         Text(slide.description,
-                            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                            style: AppTextStyles.bodyLarge
+                                .copyWith(color: secondary, height: 1.4),
                             textAlign: TextAlign.center),
                       ],
                     ),

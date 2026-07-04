@@ -18,6 +18,7 @@ import '../../bloc/complaint/complaint_state.dart';
 import '../../widgets/common/error_widget.dart';
 import '../../widgets/common/scms_button.dart';
 import '../../widgets/complaint/sla_timer_widget.dart';
+import '../../widgets/complaint/status_badge.dart';
 
 class ComplaintDetailPage extends StatefulWidget {
   final String complaintId;
@@ -65,13 +66,45 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
               authState.user.id == c.submittedById;
           return CustomScrollView(
             slivers: [
-              _buildHeader(context, c, canAssign: canAssign, isOwner: isOwner),
+              SliverAppBar(
+                pinned: true,
+                title: Text('#${c.complaintNumber}'),
+                actions: [
+                  if (canAssign)
+                    IconButton(
+                      icon: const Icon(Icons.person_add_alt_1_rounded),
+                      tooltip: c.assignedToName == null
+                          ? 'Assign to staff'
+                          : 'Reassign',
+                      onPressed: () => _showAssignSheet(context, c),
+                    ),
+                  if (isOwner)
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      tooltip: 'Edit complaint',
+                      onPressed: () => _showEditSheet(context, c),
+                    ),
+                  if (isOwner)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      tooltip: 'Delete complaint',
+                      onPressed: () => _confirmDelete(context, c),
+                    ),
+                ],
+              ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        c.subject,
+                        style: AppTextStyles.headlineMedium,
+                      ),
+                      const SizedBox(height: 10),
+                      StatusBadge(status: c.status, fontSize: 13),
+                      const SizedBox(height: 16),
                       if (c.isSlaActive) ...[
                         _Section(
                           child: SlaTimerWidget(
@@ -165,92 +198,6 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, ComplaintModel c,
-      {bool canAssign = false, bool isOwner = false}) {
-    final statusColor = c.status.toStatusColor();
-    return SliverAppBar(
-      pinned: true,
-      expandedHeight: 180,
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
-      iconTheme: const IconThemeData(color: Colors.white),
-      actions: [
-        if (canAssign)
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1_rounded),
-            tooltip: c.assignedToName == null ? 'Assign to staff' : 'Reassign',
-            onPressed: () => _showAssignSheet(context, c),
-          ),
-        if (isOwner)
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Edit complaint',
-            onPressed: () => _showEditSheet(context, c),
-          ),
-        if (isOwner)
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded),
-            tooltip: 'Delete complaint',
-            onPressed: () => _confirmDelete(context, c),
-          ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(color: AppColors.primary),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Spacer(),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '#${c.complaintNumber}',
-                          style: AppTextStyles.labelMedium.copyWith(color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          c.status.toStatusLabel(),
-                          style: AppTextStyles.labelSmall.copyWith(
-                            color: statusColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    c.subject,
-                    style: AppTextStyles.titleLarge.copyWith(color: Colors.white),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -524,8 +471,14 @@ class _Section extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

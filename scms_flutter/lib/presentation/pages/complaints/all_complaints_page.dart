@@ -6,18 +6,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/utils/extensions.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/department_model.dart';
 import '../../../data/repositories/complaint_repository.dart';
 import '../../bloc/all_complaints/all_complaints_cubit.dart';
 import '../../bloc/all_complaints/all_complaints_state.dart';
-import '../../bloc/auth/auth_bloc.dart';
-import '../../bloc/auth/auth_state.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/error_widget.dart';
-import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/scms_chip.dart';
 import '../../widgets/complaint/complaint_card.dart';
 
@@ -160,14 +156,9 @@ class _AllComplaintsViewState extends State<_AllComplaintsView> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.watch<AuthBloc>().state;
-    final role = authState is AuthAuthenticated ? authState.user.role : null;
-
     return AppScaffold(
-      appBar: GradientAppBar(
-        title: 'All Complaints',
-        glass: true,
-        roleBadge: role?.toRoleBadge(),
+      appBar: AppBar(
+        title: const Text('All Complaints'),
         actions: [
           _FilterButton(
             activeCount: _facetCount(),

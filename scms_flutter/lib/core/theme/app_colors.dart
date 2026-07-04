@@ -3,83 +3,89 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
+  // ─── System Palette (Apple) ───────────────────────────────
+  static const Color systemRed = Color(0xFFFF3B30);
+  static const Color systemOrange = Color(0xFFFF9500);
+  static const Color systemYellow = Color(0xFFFFCC00);
+  static const Color systemGreen = Color(0xFF34C759);
+  static const Color systemTeal = Color(0xFF30B0C7);
+  static const Color systemIndigo = Color(0xFF5E5CE6);
+  static const Color systemBlue = Color(0xFF007AFF);
+  static const Color systemGray = Color(0xFF8E8E93);
+
   // ─── Primary Brand Colors ─────────────────────────────────
-  // Indigo/violet identity (refreshed from the original blue/teal).
-  static const Color primary = Color(0xFF4F46E5); // indigo-600
-  static const Color primaryLight = Color(0xFF818CF8); // indigo-400
-  static const Color primaryDark = Color(0xFF3730A3); // indigo-800
+  // Apple system blue identity.
+  static const Color primary = Color(0xFF007AFF); // system blue (light)
+  static const Color primaryLight = Color(0xFF0A84FF); // system blue (dark mode)
+  static const Color primaryDark = Color(0xFF0060DF);
 
   // ─── Accent ───────────────────────────────────────────────
-  static const Color accent = Color(0xFF8B5CF6); // violet-500
+  static const Color accent = systemIndigo;
 
-  // ─── Status Colors ────────────────────────────────────────
-  static const Color statusOpen = Color(0xFF6B7280);
-  static const Color statusPendingSrReview = Color(0xFF8B5CF6);
-  static const Color statusAssigned = Color(0xFF3B82F6);
-  static const Color statusInProgress = Color(0xFFF59E0B);
-  static const Color statusResolved = Color(0xFF10B981);
-  static const Color statusClosed = Color(0xFF374151);
-  static const Color statusRejected = Color(0xFFEF4444);
+  // ─── Status Colors (remapped to system palette) ───────────
+  static const Color statusOpen = systemGray;
+  static const Color statusPendingSrReview = systemIndigo;
+  static const Color statusAssigned = systemBlue;
+  static const Color statusInProgress = systemOrange;
+  static const Color statusResolved = systemGreen;
+  static const Color statusClosed = Color(0xFF636366);
+  static const Color statusRejected = systemRed;
 
   // ─── Severity Colors ──────────────────────────────────────
-  static const Color severityHigh = Color(0xFFEF4444);
-  static const Color severityMedium = Color(0xFFF97316);
-  static const Color severityLow = Color(0xFFEAB308);
+  static const Color severityHigh = systemRed;
+  static const Color severityMedium = systemOrange;
+  static const Color severityLow = systemYellow;
 
-  // ─── Neutrals (Light) ─────────────────────────────────────
-  static const Color background = Color(0xFFF9FAFB);
+  // ─── Neutrals (Light) — iOS grouped model ─────────────────
+  static const Color background = Color(0xFFF2F2F7); // systemGroupedBackground
+  static const Color groupedBackground = Color(0xFFF2F2F7);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF3F4F6);
-  static const Color border = Color(0xFFE5E7EB);
-  static const Color textPrimary = Color(0xFF111827);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textDisabled = Color(0xFF9CA3AF);
+  static const Color surfaceVariant = Color(0xFFF2F2F7);
+  static const Color border = Color(0xFFC6C6C8);
+  static const Color separator = Color(0xFFC6C6C8);
+  static const Color textPrimary = Color(0xFF000000);
+  static const Color textSecondary = Color(0xFF8E8E93);
+  static const Color textDisabled = Color(0xFFC7C7CC);
 
   // ─── Neutrals (Dark) ──────────────────────────────────────
-  static const Color backgroundDark = Color(0xFF111827);
-  static const Color surfaceDark = Color(0xFF1F2937);
-  static const Color surfaceVariantDark = Color(0xFF374151);
-  static const Color borderDark = Color(0xFF4B5563);
-  static const Color textPrimaryDark = Color(0xFFF9FAFB);
-  static const Color textSecondaryDark = Color(0xFF9CA3AF);
+  static const Color backgroundDark = Color(0xFF000000);
+  static const Color groupedBackgroundDark = Color(0xFF000000);
+  static const Color surfaceDark = Color(0xFF1C1C1E);
+  static const Color surfaceVariantDark = Color(0xFF2C2C2E);
+  static const Color borderDark = Color(0xFF38383A);
+  static const Color separatorDark = Color(0xFF38383A);
+  static const Color textPrimaryDark = Color(0xFFFFFFFF);
+  static const Color textSecondaryDark = Color(0xFF98989F);
 
   // ─── AI Confidence Colors ─────────────────────────────────
-  static const Color confidenceHigh = Color(0xFF10B981);
-  static const Color confidenceMedium = Color(0xFFF59E0B);
-  static const Color confidenceLow = Color(0xFFEF4444);
+  static const Color confidenceHigh = systemGreen;
+  static const Color confidenceMedium = systemOrange;
+  static const Color confidenceLow = systemRed;
 
   // ─── Glass / surface tokens ───────────────────────────────
-  // Frosted-glass surfaces are built with BackdropFilter + these translucent
-  // fills/borders. Keep dense text on solid surfaces; glass is for chrome,
-  // cards over the gradient backdrop, and hero panels.
-  static const Color glassFillLight = Color(0x99FFFFFF); // ~60% white
-  static const Color glassFillDark = Color(0x401F2937); // ~25% dark surface
-  static const Color glassBorderLight = Color(0x4DFFFFFF); // ~30% white
-  static const Color glassBorderDark = Color(0x33FFFFFF); // ~20% white
+  // Blur is retained only for iOS-style chrome (nav bar + tab bar).
+  static const Color glassFillLight = Color(0xB3FFFFFF); // ~70% white
+  static const Color glassFillDark = Color(0xB31C1C1E); // ~70% dark surface
+  static const Color glassBorderLight = Color(0x1A000000);
+  static const Color glassBorderDark = Color(0x1AFFFFFF);
   static const double glassBlurSigma = 18.0;
 
   // ─── Brand surfaces (solid) ───────────────────────────────
-  // Premium look uses SOLID brand fills — no gradients on screen.
-  // A slightly deeper indigo is available for subtle layering (e.g. a darker
-  // hero footer or pressed state) without ever blending two hues.
-  static const Color primarySurface = primary; // indigo-600 header/hero fill
-  static const Color primaryDeep = Color(0xFF4338CA); // indigo-700
+  static const Color primarySurface = primary;
+  static const Color primaryDeep = primaryDark;
 
-  /// Soft full-screen backdrop behind glass surfaces (light theme).
-  /// Kept as a [LinearGradient] for API stability, but flattened to a single
-  /// tone so nothing renders as a gradient.
+  /// Soft full-screen backdrop (light) — flattened to the grouped background.
   static const LinearGradient backdropLight = LinearGradient(
-    colors: [Color(0xFFF6F7FB), Color(0xFFF6F7FB)],
+    colors: [Color(0xFFF2F2F7), Color(0xFFF2F2F7)],
   );
 
-  /// Soft full-screen backdrop behind glass surfaces (dark theme), flattened.
+  /// Soft full-screen backdrop (dark) — flattened to the grouped background.
   static const LinearGradient backdropDark = LinearGradient(
-    colors: [Color(0xFF111827), Color(0xFF111827)],
+    colors: [Color(0xFF000000), Color(0xFF000000)],
   );
 
   // ─── Legacy gradient tokens (deprecated, unused on screen) ────────────────
-  // Retained only so any stray reference still compiles. Do not use for new
-  // surfaces — the app is solid + frosted-glass, no gradient fills.
+  // Retained only so any stray reference still compiles. Flat, single-hue.
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [primary, primary],
   );
@@ -89,6 +95,10 @@ class AppColors {
   );
 
   // ─── Helper Methods ───────────────────────────────────────
+
+  /// Translucent tint of [c] for iOS "tinted" buttons/chips/backgrounds.
+  static Color fillTinted(Color c, [double opacity = 0.15]) =>
+      c.withValues(alpha: opacity);
 
   /// Get color for a complaint status string
   static Color statusColor(String status) {

@@ -511,3 +511,28 @@ uvicorn main:app --reload --port 8000
 *• `submit_complaint`: AI-suggestion and grammar banners' "dismiss" buttons now work (`dismissAiPreview()`/`dismissGrammar()` + `grammarDismissed` flag) — were no-ops.*
 *• Cleanup: extracted shared `String.toRoleLabel()`/`toRoleBadge()` (extensions.dart) adopted by profile/stats/all-complaints (removed 3 duplicated role switches); `status_breakdown_ring` legend now uses canonical `toStatusLabel()` instead of its own `_pretty()`.*
 *• `flutter analyze`: No issues found. Backend routes pass `node --check`.*
+
+---
+
+*Last updated: 2026-07-04 by Claude Code (AI agent) — **iOS-clean UI/UX redesign, Phase A (foundation)**. Cross-cutting presentation-only change (touches shared theme + widgets across all owners) — done at user's request. Spec: `docs/superpowers/specs/2026-07-04-ios-clean-ui-redesign-design.md`; plan: `docs/superpowers/plans/2026-07-04-ios-clean-ui-redesign.md`.*
+*### Phase A — design-system foundation (Apple system-blue, iOS-clean)*
+*• `app_colors.dart`: remapped tokens to the Apple system palette (accent `#007AFF`/`#0A84FF`, grouped backgrounds `#F2F2F7`/`#000000`, surfaces, hairline separators, system red/orange/green/etc.); status/severity/confidence colors now derive from system colors. Public API kept stable; added `groupedBackground*`, `separator*`, `system*`, `fillTinted()`.*
+*• `app_text_styles.dart` + `app_theme.dart`: retuned to the iOS type scale (Large Title 34 … Caption 12); themes now use grouped scaffold bg, transparent centered app bars, 12px flat cards/buttons (50px min), pill chips, 0.5px hairline dividers, and a Cupertino `PageTransitionsTheme` on both light & dark.*
+*• New shared components: `PressableScale` (0.98 press feedback), `InsetGroupedSection` + `InsetListRow` (iOS grouped list), `LargeTitleScaffold` (collapsing blurred large-title nav), `CupertinoSegmentedTabs` (segmented filter).*
+*• Restyled `ScmsButton` (filled/tinted/destructive/text, flat), `StatusBadge` (tinted pill), `StatsCard` (surface card + count-up value), `DashboardHero` (large-title greeting + light stat tiles; no more indigo block).*
+*• `flutter analyze`: No issues found.*
+*### Phase B — student flow screens (iOS-clean)*
+*• Splash/onboarding/login: content on grouped background, accent app-icon tiles, Cupertino spinner; login drops the heavy glass card; all auth logic (Google + mock role bypass) unchanged.*
+*• Home dashboard: inherits the large-title `DashboardHero`, surface-card quick actions (press-scale), restyled complaint cards; blocs unchanged.*
+*• Submit: transparent app bar with Cancel, severity via `CupertinoSegmentedTabs`; cubit/debounce/AI banners/field names unchanged.*
+*• My/All Complaints: clean app bars, pill filter chips; card + pagination/search/filter logic unchanged.*
+*• Detail: removed the solid-indigo header for a transparent app bar + large title + status pill; sections are soft surface cards; timeline/edit/delete/assign preserved. Rating + duplicates: clean app bars, surface cards, press-scale.*
+*• Shared: `ComplaintCard`, `QuickActionsRow`, and `GlassContainer` (→ every glass consumer) converted to solid iOS surface cards. `flutter analyze`: No issues found.*
+*### Phase C — staff/SR/admin/stats screens (iOS-clean)*
+*• Staff, SR, and admin dashboards required no structural change — they inherit the restyled `DashboardHero`, `SrSummaryHeader`, `StatsCard`, `ComplaintCard`, `ScmsButton`, and pill chips from Phase A (the payoff of the shared-component approach).*
+*• Swapped the remaining `GradientAppBar`s for clean transparent `AppBar`s on: staff task detail, SR review detail, admin complaints list, and the shared Statistics page (kept CSV/refresh actions; dropped the role-badge chrome). All BLoC events, status-update payloads (`status`), approve/reject flows, and CSV export unchanged. `flutter analyze`: No issues found.*
+*### Phase D — shell, settings, profile, polish (iOS-clean) — REDESIGN COMPLETE*
+*• `main_shell.dart`: replaced Material `NavigationBar` with a custom translucent, blurred floating tab bar (`BackdropFilter`, `extendBody: true`, press-scale items); tab indices, role-aware dashboard caching, and switching logic unchanged.*
+*• Settings + Profile: rebuilt on `InsetGroupedSection`/`InsetListRow` grouped lists; Profile drops its solid-indigo header for a clean avatar/name/role-pill header on the grouped background; notification toggle, theme selector, settings nav, and logout logic preserved.*
+*• Polish: `EmptyStateWidget`/`error_widget`/`loading_overlay` swept to `.withValues`; deleted the now-orphaned `gradient_app_bar.dart`.*
+*• Summary: full-app iOS-clean redesign (Apple system-blue accent, grouped inset cards, large titles, blurred nav/tab chrome, subtle motion) across all roles + light/dark. `flutter analyze`: No issues found; debug APK builds. NOTE: on-device visual QA in both themes still recommended before release.*

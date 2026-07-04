@@ -14,7 +14,6 @@ import '../../bloc/complaint/complaint_event.dart';
 import '../../bloc/complaint/complaint_state.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/error_widget.dart';
-import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/loading_overlay.dart';
 import '../../widgets/common/scms_button.dart';
 import '../../widgets/common/scms_text_field.dart';
@@ -55,7 +54,7 @@ class _StaffComplaintDetailPageState extends State<StaffComplaintDetailPage> {
 	@override
 	Widget build(BuildContext context) {
 		return AppScaffold(
-			appBar: const GradientAppBar(title: 'Task Detail', roleBadge: 'STAFF', glass: true),
+			appBar: AppBar(title: const Text('Task Detail')),
 			body: BlocBuilder<ComplaintBloc, ComplaintState>(
 				builder: (context, state) {
 					if (state is ComplaintLoading) {

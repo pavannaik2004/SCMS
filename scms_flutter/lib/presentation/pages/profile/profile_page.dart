@@ -17,11 +17,13 @@ import '../../bloc/complaint/complaint_bloc.dart';
 import '../../bloc/complaint/complaint_event.dart';
 import '../../bloc/complaint/complaint_state.dart';
 import '../../widgets/common/app_scaffold.dart';
+import '../../widgets/common/inset_grouped_section.dart';
+import '../../widgets/common/inset_list_row.dart';
 import '../../widgets/common/scms_button.dart';
 
-/// Unified profile screen used by every role (replaces the student-only profile
-/// tab and gives staff/SR/admin a real profile). Solid-brand header + glass-ish
-/// cards, with working preference toggles, settings access and logout.
+/// Unified iOS-clean profile screen used by every role. Clean header on the
+/// grouped background, activity stat tiles, grouped account/preferences, and
+/// settings + logout actions.
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -35,7 +37,6 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Ensure the personal activity stats have data to show.
     final state = context.read<ComplaintBloc>().state;
     if (state is! MyComplaintsLoaded) {
       context.read<ComplaintBloc>().add(LoadMyComplaints());
@@ -49,66 +50,114 @@ class _ProfilePageState extends State<ProfilePage> {
         builder: (context, state) {
           final user = state is AuthAuthenticated ? state.user : null;
           return ListView(
-            padding: EdgeInsets.zero,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             children: [
               _Header(user: user),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Your activity', style: AppTextStyles.titleMedium),
-                    const SizedBox(height: 10),
-                    _buildActivityStats(),
-                    const SizedBox(height: 24),
-                    Text('Account', style: AppTextStyles.titleMedium),
-                    const SizedBox(height: 10),
-                    if (user?.departmentName != null)
-                      _InfoTile(
-                        icon: Icons.business_rounded,
-                        label: 'Department',
-                        value: user!.departmentName!,
+              const SizedBox(height: 8),
+              _buildActivityStats(),
+              const SizedBox(height: 24),
+              InsetGroupedSection(
+                header: 'Account',
+                children: [
+                  if (user?.departmentName != null)
+                    InsetListRow(
+                      leading: _icon(Icons.business_rounded, AppColors.systemBlue),
+                      title: 'Department',
+                      trailing: _trailingValue(user!.departmentName!),
+                    ),
+                  InsetListRow(
+                    leading:
+                        _icon(Icons.verified_user_rounded, AppColors.systemGreen),
+                    title: 'Account',
+                    trailing: _trailingValue('RVCE Verified'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              InsetGroupedSection(
+                header: 'Preferences',
+                children: [
+                  InsetListRow(
+                    leading:
+                        _icon(Icons.notifications_rounded, AppColors.systemRed),
+                    title: 'Notifications',
+                    subtitle: 'Push updates and reminders',
+                    trailing: Switch.adaptive(
+                      value: _prefs.notificationsEnabled,
+                      onChanged: (v) =>
+                          setState(() => _prefs.setNotificationsEnabled(v)),
+                    ),
+                  ),
+                  InsetListRow(
+                    leading:
+                        _icon(Icons.dark_mode_rounded, AppColors.systemIndigo),
+                    title: 'Theme',
+                    trailing: DropdownButtonHideUnderline(
+                      child: DropdownButton<ThemeMode>(
+                        value: _prefs.themeMode,
+                        borderRadius: BorderRadius.circular(12),
+                        items: const [
+                          DropdownMenuItem(
+                              value: ThemeMode.system, child: Text('System')),
+                          DropdownMenuItem(
+                              value: ThemeMode.light, child: Text('Light')),
+                          DropdownMenuItem(
+                              value: ThemeMode.dark, child: Text('Dark')),
+                        ],
+                        onChanged: (mode) {
+                          if (mode == null) return;
+                          setState(() => _prefs.setThemeMode(mode));
+                        },
                       ),
-                    const _InfoTile(
-                      icon: Icons.verified_user_outlined,
-                      label: 'Account',
-                      value: 'RVCE Verified',
                     ),
-                    const SizedBox(height: 24),
-                    Text('Preferences', style: AppTextStyles.titleMedium),
-                    const SizedBox(height: 10),
-                    _buildNotificationToggle(),
-                    const SizedBox(height: 12),
-                    _buildThemeSelector(),
-                    const SizedBox(height: 24),
-                    ScmsButton(
-                      label: 'All Settings',
-                      variant: ScmsButtonVariant.secondary,
-                      icon: Icons.settings_rounded,
-                      onPressed: () => context.push(Routes.settings),
-                    ),
-                    const SizedBox(height: 12),
-                    ScmsButton(
-                      label: 'Log Out',
-                      variant: ScmsButtonVariant.destructive,
-                      icon: Icons.logout_rounded,
-                      onPressed: () =>
-                          context.read<AuthBloc>().add(LogoutRequested()),
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: Text(
-                        '${AppConstants.appName} · v${AppConstants.appVersion} (${AppConstants.buildNumber})',
-                        style: AppTextStyles.caption,
-                      ),
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              ScmsButton(
+                label: 'All Settings',
+                variant: ScmsButtonVariant.secondary,
+                icon: Icons.settings_rounded,
+                onPressed: () => context.push(Routes.settings),
+              ),
+              const SizedBox(height: 12),
+              ScmsButton(
+                label: 'Log Out',
+                variant: ScmsButtonVariant.destructive,
+                icon: Icons.logout_rounded,
+                onPressed: () =>
+                    context.read<AuthBloc>().add(LogoutRequested()),
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: Text(
+                  '${AppConstants.appName} · v${AppConstants.appVersion} (${AppConstants.buildNumber})',
+                  style: AppTextStyles.caption,
                 ),
               ),
             ],
           );
         },
       ),
+    );
+  }
+
+  Widget _icon(IconData icon, Color color) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Icon(icon, size: 18, color: Colors.white),
+    );
+  }
+
+  Widget _trailingValue(String value) {
+    return Text(
+      value,
+      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
     );
   }
 
@@ -119,8 +168,7 @@ class _ProfilePageState extends State<ProfilePage> {
             state is MyComplaintsLoaded ? state.complaints : const [];
         final total = complaints.length;
         final active = complaints
-            .where((c) =>
-                !['RESOLVED', 'CLOSED', 'REJECTED'].contains(c.status))
+            .where((c) => !['RESOLVED', 'CLOSED', 'REJECTED'].contains(c.status))
             .length;
         final resolved = complaints
             .where((c) => c.status == 'RESOLVED' || c.status == 'CLOSED')
@@ -143,48 +191,6 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
   }
-
-  Widget _buildNotificationToggle() {
-    return Card(
-      child: SwitchListTile(
-        value: _prefs.notificationsEnabled,
-        onChanged: (v) => setState(() => _prefs.setNotificationsEnabled(v)),
-        title: Text('Notifications', style: AppTextStyles.titleSmall),
-        subtitle: Text(
-          'Enable push updates and reminders',
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildThemeSelector() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Theme', style: AppTextStyles.titleSmall),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<ThemeMode>(
-              value: _prefs.themeMode,
-              items: const [
-                DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
-                DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
-                DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
-              ],
-              onChanged: (mode) {
-                if (mode == null) return;
-                setState(() => _prefs.setThemeMode(mode));
-              },
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _Header extends StatelessWidget {
@@ -193,77 +199,61 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? AppColors.primaryLight : AppColors.primary;
+    final primary =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final secondary =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final name = user?.name ?? 'Guest User';
     final email = user?.email ?? 'Not signed in';
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border:
-                      Border.all(color: Colors.white.withOpacity(0.6), width: 2),
-                ),
-                child: CircleAvatar(
-                  radius: 44,
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  backgroundImage:
-                      user?.picture != null ? NetworkImage(user!.picture!) : null,
-                  child: user?.picture == null
-                      ? Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                          style: AppTextStyles.displayLarge
-                              .copyWith(color: Colors.white),
-                        )
-                      : null,
-                ),
+
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 16, bottom: 8),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 46,
+              backgroundColor: accent.withValues(alpha: 0.14),
+              backgroundImage:
+                  user?.picture != null ? NetworkImage(user!.picture!) : null,
+              child: user?.picture == null
+                  ? Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                      style: AppTextStyles.displayLarge.copyWith(color: accent),
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              name,
+              style: AppTextStyles.headlineLarge.copyWith(color: primary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(email, style: AppTextStyles.bodyMedium.copyWith(color: secondary)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(100),
               ),
-              const SizedBox(height: 14),
-              Text(
-                name,
-                style: AppTextStyles.headlineMedium.copyWith(color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                email,
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: Colors.white.withOpacity(0.85)),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  (user?.role ?? '').toRoleLabel().toUpperCase(),
-                  style: AppTextStyles.labelMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
+              child: Text(
+                (user?.role ?? '').toRoleLabel().toUpperCase(),
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: accent,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-
 }
 
 class _StatTile extends StatelessWidget {
@@ -279,13 +269,23 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? AppColors.surfaceDark : AppColors.surface;
+    final secondary =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.10),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.25)),
+          color: surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,52 +294,9 @@ class _StatTile extends StatelessWidget {
                 style: AppTextStyles.headlineMedium.copyWith(color: color)),
             const SizedBox(height: 2),
             Text(label,
-                style: AppTextStyles.labelMedium
-                    .copyWith(color: AppColors.textSecondary)),
+                style: AppTextStyles.labelMedium.copyWith(color: secondary)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _InfoTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.primary),
-          const SizedBox(width: 14),
-          Text(label,
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textSecondary)),
-          const Spacer(),
-          Flexible(
-            child: Text(
-              value,
-              style: AppTextStyles.titleSmall,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
       ),
     );
   }

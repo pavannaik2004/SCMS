@@ -10,9 +10,9 @@ import '../../../data/repositories/complaint_repository.dart';
 import '../../bloc/submit_complaint/submit_complaint_cubit.dart';
 import '../../bloc/submit_complaint/submit_complaint_state.dart';
 import '../../widgets/common/app_scaffold.dart';
-import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/scms_button.dart';
 import '../../widgets/common/scms_text_field.dart';
+import '../../widgets/common/segmented_tabs.dart';
 import '../../widgets/common/loading_overlay.dart';
 import '../../widgets/complaint/media_capture_widget.dart';
 import '../../widgets/complaint/category_selector_widget.dart';
@@ -60,7 +60,14 @@ class _SubmitComplaintPageState extends State<SubmitComplaintPage> {
           isLoading: state.isLoading,
           message: 'Submitting complaint...',
           child: AppScaffold(
-            appBar: const GradientAppBar(title: 'New Complaint', glass: true),
+            appBar: AppBar(
+              title: const Text('New Complaint'),
+              leadingWidth: 88,
+              leading: TextButton(
+                onPressed: () => context.pop(),
+                child: const Text('Cancel'),
+              ),
+            ),
             body: Form(
               key: _formKey,
               child: ListView(
@@ -169,15 +176,15 @@ class _SubmitComplaintPageState extends State<SubmitComplaintPage> {
                   // ── Severity ───────────────────────────────────────────────
                   Text('Severity', style: AppTextStyles.labelLarge),
                   const SizedBox(height: 8),
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'LOW', label: Text('Low')),
-                      ButtonSegment(value: 'MEDIUM', label: Text('Medium')),
-                      ButtonSegment(value: 'HIGH', label: Text('High')),
-                    ],
-                    selected: {state.severity ?? 'MEDIUM'},
-                    onSelectionChanged: (v) => cubit.updateSeverity(v.first),
-                  ),
+                  Builder(builder: (context) {
+                    const values = ['LOW', 'MEDIUM', 'HIGH'];
+                    final selected = state.severity ?? 'MEDIUM';
+                    return CupertinoSegmentedTabs(
+                      segments: const ['Low', 'Medium', 'High'],
+                      selectedIndex: values.indexOf(selected).clamp(0, 2),
+                      onChanged: (i) => cubit.updateSeverity(values[i]),
+                    );
+                  }),
                   const SizedBox(height: 16),
 
                   // ── Photos ─────────────────────────────────────────────────

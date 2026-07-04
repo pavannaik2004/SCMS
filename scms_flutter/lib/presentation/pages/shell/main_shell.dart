@@ -1,7 +1,11 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../widgets/common/pressable_scale.dart';
 import '../../bloc/auth/auth_bloc.dart';
 import '../../bloc/auth/auth_state.dart';
 import '../admin/admin_dashboard_page.dart';
@@ -77,6 +81,7 @@ class _MainShellState extends State<MainShell> {
     _cache.putIfAbsent(_index, () => _buildTab(_index, role));
 
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: _index,
         children: List.generate(
@@ -84,40 +89,103 @@ class _MainShellState extends State<MainShell> {
           (i) => _cache[i] ?? const SizedBox.shrink(),
         ),
       ),
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          labelTextStyle: WidgetStateProperty.all(
-            AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.w600),
+      bottomNavigationBar: _BlurredTabBar(
+        selectedIndex: _index,
+        onSelected: (i) => setState(() => _index = i),
+      ),
+    );
+  }
+}
+
+/// iOS-style translucent, blurred floating tab bar.
+class _BlurredTabBar extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  const _BlurredTabBar({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  static const _items = [
+    (Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard'),
+    (Icons.list_alt_outlined, Icons.list_alt_rounded, 'All'),
+    (Icons.bar_chart_outlined, Icons.bar_chart_rounded, 'Stats'),
+    (Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final glass = isDark ? AppColors.glassFillDark : AppColors.glassFillLight;
+    final sep = isDark ? AppColors.separatorDark : AppColors.separator;
+    final accent = isDark ? AppColors.primaryLight : AppColors.primary;
+    final inactive =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: glass,
+            border: Border(top: BorderSide(color: sep, width: 0.5)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 56,
+              child: Row(
+                children: [
+                  for (var i = 0; i < _items.length; i++)
+                    Expanded(
+                      child: PressableScale(
+                        onTap: () => onSelected(i),
+                        child: _TabItem(
+                          icon: i == selectedIndex
+                              ? _items[i].$2
+                              : _items[i].$1,
+                          label: _items[i].$3,
+                          color: i == selectedIndex ? accent : inactive,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
-        child: NavigationBar(
-          selectedIndex: _index,
-          height: 68,
-          onDestinationSelected: (i) => setState(() => _index = i),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard_rounded),
-              label: 'Dashboard',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.list_alt_outlined),
-              selectedIcon: Icon(Icons.list_alt_rounded),
-              label: 'All',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.bar_chart_outlined),
-              selectedIcon: Icon(Icons.bar_chart_rounded),
-              label: 'Stats',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline_rounded),
-              selectedIcon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-          ],
-        ),
       ),
+    );
+  }
+}
+
+class _TabItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _TabItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: AppTextStyles.labelSmall.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

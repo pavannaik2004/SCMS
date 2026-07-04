@@ -9,7 +9,7 @@ import '../../../data/repositories/complaint_repository.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/error_widget.dart' as scms;
-import '../../widgets/common/gradient_app_bar.dart';
+import '../../widgets/common/pressable_scale.dart';
 import '../../widgets/complaint/status_badge.dart';
 
 /// Shows the list of complaints that are similar to the one the user just
@@ -47,9 +47,8 @@ class _DuplicateComplaintsPageState extends State<DuplicateComplaintsPage> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      appBar: GradientAppBar(
-        title: 'Similar Complaints',
-        glass: true,
+      appBar: AppBar(
+        title: const Text('Similar Complaints'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -155,14 +154,21 @@ class _DuplicateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final similarity = (match.score * 100).toStringAsFixed(0);
 
-    return GestureDetector(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return PressableScale(
       onTap: () => context.push('/complaint/${match.id}'),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          color: isDark ? AppColors.surfaceDark : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

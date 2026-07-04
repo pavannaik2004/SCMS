@@ -12,15 +12,12 @@ import '../../bloc/all_complaints/all_complaints_cubit.dart';
 import '../../bloc/all_complaints/all_complaints_state.dart';
 import '../../bloc/analytics/analytics_cubit.dart';
 import '../../bloc/analytics/analytics_state.dart';
-import '../../bloc/auth/auth_bloc.dart';
-import '../../bloc/auth/auth_state.dart';
 import '../../widgets/analytics/complaints_chart.dart';
 import '../../widgets/analytics/stats_card.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/error_widget.dart';
 import '../../widgets/common/glass_card.dart';
-import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/complaint/complaint_card.dart';
 import '../../widgets/dashboard/trend_sparkline.dart';
@@ -66,14 +63,9 @@ class _StatsViewState extends State<_StatsView> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.watch<AuthBloc>().state;
-    final role = authState is AuthAuthenticated ? authState.user.role : null;
-
     return AppScaffold(
-      appBar: GradientAppBar(
-        title: 'Statistics',
-        glass: true,
-        roleBadge: role?.toRoleBadge(),
+      appBar: AppBar(
+        title: const Text('Statistics'),
         actions: [
           IconButton(
             icon: const Icon(Icons.ios_share_rounded),

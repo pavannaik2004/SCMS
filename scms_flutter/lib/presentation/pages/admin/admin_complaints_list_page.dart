@@ -9,7 +9,6 @@ import '../../bloc/complaint/complaint_state.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/error_widget.dart';
-import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/scms_chip.dart';
 import '../../widgets/complaint/complaint_card.dart';
 
@@ -41,7 +40,7 @@ class _AdminComplaintsListPageState extends State<AdminComplaintsListPage> {
 	@override
 	Widget build(BuildContext context) {
 		return AppScaffold(
-			appBar: const GradientAppBar(title: 'All Complaints', roleBadge: 'ADMIN', glass: true),
+			appBar: AppBar(title: const Text('All Complaints')),
 			body: Column(
 				children: [
 					SizedBox(
