@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
 // Zod schemas for request validation
 const googleLoginSchema = z.object({
   idToken: z.string().min(1, 'Google ID token is required.'),
-  fcmToken: z.string().optional()
+  fcmToken: z.string().nullish()
 });
 
 const refreshSchema = z.object({
@@ -126,7 +126,8 @@ router.post('/google', validateBody(googleLoginSchema), async (req, res, next) =
         picture: user.picture,
         role: user.role,
         departmentId: user.departmentId,
-        zoneId: user.zoneId
+        zoneId: user.zoneId,
+        createdAt: user.createdAt
       }
     });
 
@@ -224,7 +225,8 @@ router.get('/me', authenticate, async (req, res, next) => {
       picture: user.picture,
       role: user.role,
       departmentId: user.departmentId,
-      zoneId: user.zoneId
+      zoneId: user.zoneId,
+      createdAt: user.createdAt
     });
   } catch (error) {
     next(error);

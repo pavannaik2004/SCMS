@@ -2,6 +2,15 @@ import 'dart:io';
 import '../../../data/models/grammar_correction_model.dart';
 import '../../../data/models/duplicate_check_model.dart';
 
+/// Sentinel used by [SubmitComplaintState.copyWith] to distinguish "field not
+/// passed" (keep current value) from "field explicitly passed as null" (the
+/// plain `field ?? this.field` pattern can't tell these apart).
+class _Unset {
+  const _Unset();
+}
+
+const _unset = _Unset();
+
 class SubmitComplaintState {
   final bool isLoading;
   final String? subject;
@@ -51,9 +60,9 @@ class SubmitComplaintState {
     String? categoryId,
     String? severity,
     List<File>? photos,
-    GrammarCorrectionModel? grammarResult,
+    Object? grammarResult = _unset,
     bool? grammarDismissed,
-    Map<String, dynamic>? aiPreview,
+    Object? aiPreview = _unset,
     bool? aiPreviewAccepted,
     DuplicateCheckModel? duplicateResult,
     bool? isSuccess,
@@ -71,9 +80,13 @@ class SubmitComplaintState {
       categoryId: categoryId ?? this.categoryId,
       severity: severity ?? this.severity,
       photos: photos ?? this.photos,
-      grammarResult: grammarResult ?? this.grammarResult,
+      grammarResult: identical(grammarResult, _unset)
+          ? this.grammarResult
+          : grammarResult as GrammarCorrectionModel?,
       grammarDismissed: grammarDismissed ?? this.grammarDismissed,
-      aiPreview: aiPreview ?? this.aiPreview,
+      aiPreview: identical(aiPreview, _unset)
+          ? this.aiPreview
+          : aiPreview as Map<String, dynamic>?,
       aiPreviewAccepted: aiPreviewAccepted ?? this.aiPreviewAccepted,
       duplicateResult: duplicateResult ?? this.duplicateResult,
       isSuccess: isSuccess ?? this.isSuccess,

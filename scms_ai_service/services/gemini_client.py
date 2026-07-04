@@ -34,7 +34,7 @@ else:
     logger.warning("GEMINI_API_KEY not set — Gemini calls will fail gracefully.")
 
 # Model identifiers (overridable via env so we can switch if a model has no quota)
-_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-2.5-flash")
+_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.1-flash-lite")
 _EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "models/gemini-embedding-004")  # 768-d
 
 # ── Categories known to the system ───────────────────────────────────────────

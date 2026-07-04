@@ -5,6 +5,7 @@ import '../constants/api_constants.dart';
 import '../constants/app_constants.dart';
 import '../errors/exceptions.dart';
 import '../utils/logger.dart';
+import 'server_url_override.dart';
 
 /// Configured Dio HTTP client with auth and logging interceptors
 class DioClient {
@@ -24,10 +25,24 @@ class DioClient {
     );
 
     dio.interceptors.addAll([
+      _BaseUrlOverrideInterceptor(),
       _AuthInterceptor(_secureStorage, dio),
       _UnwrapInterceptor(),
       _LoggingInterceptor(),
     ]);
+  }
+}
+
+/// Applies a runtime-configured server URL (see [ServerUrlOverride]) over the
+/// `.env`-baked default, so switching networks doesn't require a rebuild.
+class _BaseUrlOverrideInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    final override = await ServerUrlOverride.get();
+    if (override != null && override.isNotEmpty) {
+      options.baseUrl = '$override${ApiConstants.apiPrefix}';
+    }
+    handler.next(options);
   }
 }
 

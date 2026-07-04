@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/app_preferences.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/network/server_url_override.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/user_model.dart';
@@ -23,6 +25,15 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
 	final _prefs = AppPreferences.instance;
+	String? _serverUrlOverride;
+
+	@override
+	void initState() {
+		super.initState();
+		ServerUrlOverride.get().then((value) {
+			if (mounted) setState(() => _serverUrlOverride = value);
+		});
+	}
 
 	@override
 	Widget build(BuildContext context) {
@@ -41,6 +52,16 @@ class _SettingsPageState extends State<SettingsPage> {
 								children: [
 									_buildNotificationRow(),
 									_buildThemeRow(),
+								],
+							),
+							const SizedBox(height: 24),
+							InsetGroupedSection(
+								header: 'Developer',
+								footer: 'Point the app at a different backend without rebuilding '
+										'(e.g. after switching networks). Leave blank to use the '
+										'default from the build (${ApiConstants.baseUrl}).',
+								children: [
+									_buildServerUrlRow(),
 								],
 							),
 							const SizedBox(height: 24),
@@ -180,6 +201,77 @@ class _SettingsPageState extends State<SettingsPage> {
 						if (mode == null) return;
 						setState(() => _prefs.setThemeMode(mode));
 					},
+				),
+			),
+		);
+	}
+
+	Widget _buildServerUrlRow() {
+		return InsetListRow(
+			leading: _icon(Icons.dns_rounded, AppColors.systemTeal),
+			title: 'Server URL',
+			subtitle: _serverUrlOverride ?? 'Default (${ApiConstants.baseUrl})',
+			showChevron: true,
+			onTap: _showServerUrlDialog,
+		);
+	}
+
+	Future<void> _showServerUrlDialog() async {
+		final controller = TextEditingController(text: _serverUrlOverride ?? '');
+		final result = await showDialog<String?>(
+			context: context,
+			builder: (dialogContext) => AlertDialog(
+				title: const Text('Server URL'),
+				content: Column(
+					mainAxisSize: MainAxisSize.min,
+					crossAxisAlignment: CrossAxisAlignment.start,
+					children: [
+						Text(
+							'e.g. 192.168.1.104:3000 (scheme optional, defaults to http://)',
+							style: AppTextStyles.bodySmall
+									.copyWith(color: AppColors.textSecondary),
+						),
+						const SizedBox(height: 12),
+						TextField(
+							controller: controller,
+							autofocus: true,
+							keyboardType: TextInputType.url,
+							decoration: InputDecoration(
+								hintText: ApiConstants.baseUrl,
+								border: const OutlineInputBorder(),
+							),
+						),
+					],
+				),
+				actions: [
+					TextButton(
+						onPressed: () => Navigator.pop(dialogContext, ''),
+						child: const Text('Reset to default'),
+					),
+					TextButton(
+						onPressed: () => Navigator.pop(dialogContext),
+						child: const Text('Cancel'),
+					),
+					FilledButton(
+						onPressed: () => Navigator.pop(dialogContext, controller.text),
+						child: const Text('Save'),
+					),
+				],
+			),
+		);
+		controller.dispose();
+		if (result == null) return; // cancelled
+
+		await ServerUrlOverride.set(result.isEmpty ? null : result);
+		final saved = await ServerUrlOverride.get();
+		if (!mounted) return;
+		setState(() => _serverUrlOverride = saved);
+		ScaffoldMessenger.of(context).showSnackBar(
+			SnackBar(
+				content: Text(
+					saved == null
+							? 'Reset to default server (${ApiConstants.baseUrl}).'
+							: 'Server URL set to $saved.',
 				),
 			),
 		);

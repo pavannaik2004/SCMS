@@ -11,3 +11,7 @@ scms_backend/firebase-service-account.json
 .vscode/
 *.iml
 CLAUDE.md
+scripts/.dev
+
+-pids.json
+docs/superpowers

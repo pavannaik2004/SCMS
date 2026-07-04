@@ -30,17 +30,36 @@ class SubmitComplaintPage extends StatefulWidget {
 class _SubmitComplaintPageState extends State<SubmitComplaintPage> {
   final _formKey = GlobalKey<FormState>();
   late final Future<List<CategoryModel>> _categoriesFuture;
+  late final TextEditingController _descriptionController;
 
   @override
   void initState() {
     super.initState();
     _categoriesFuture = context.read<ComplaintRepository>().getCategories();
+    _descriptionController = TextEditingController(
+      text: context.read<SubmitComplaintCubit>().state.description ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<SubmitComplaintCubit, SubmitComplaintState>(
       listener: (context, state) {
+        // Keep the field in sync when the description changes from outside
+        // direct typing (e.g. applying an AI grammar correction).
+        final description = state.description ?? '';
+        if (_descriptionController.text != description) {
+          _descriptionController.text = description;
+          _descriptionController.selection = TextSelection.collapsed(
+            offset: description.length,
+          );
+        }
         if (state.isSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Complaint submitted successfully!')),
@@ -86,6 +105,7 @@ class _SubmitComplaintPageState extends State<SubmitComplaintPage> {
                   ScmsTextField(
                     label: 'Description',
                     hint: 'Describe the issue in detail...',
+                    controller: _descriptionController,
                     maxLines: 5,
                     maxLength: 500,
                     onChanged: cubit.updateDescription,
