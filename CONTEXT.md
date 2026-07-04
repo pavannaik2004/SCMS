@@ -531,3 +531,8 @@ uvicorn main:app --reload --port 8000
 *### Phase C — staff/SR/admin/stats screens (iOS-clean)*
 *• Staff, SR, and admin dashboards required no structural change — they inherit the restyled `DashboardHero`, `SrSummaryHeader`, `StatsCard`, `ComplaintCard`, `ScmsButton`, and pill chips from Phase A (the payoff of the shared-component approach).*
 *• Swapped the remaining `GradientAppBar`s for clean transparent `AppBar`s on: staff task detail, SR review detail, admin complaints list, and the shared Statistics page (kept CSV/refresh actions; dropped the role-badge chrome). All BLoC events, status-update payloads (`status`), approve/reject flows, and CSV export unchanged. `flutter analyze`: No issues found.*
+*### Phase D — shell, settings, profile, polish (iOS-clean) — REDESIGN COMPLETE*
+*• `main_shell.dart`: replaced Material `NavigationBar` with a custom translucent, blurred floating tab bar (`BackdropFilter`, `extendBody: true`, press-scale items); tab indices, role-aware dashboard caching, and switching logic unchanged.*
+*• Settings + Profile: rebuilt on `InsetGroupedSection`/`InsetListRow` grouped lists; Profile drops its solid-indigo header for a clean avatar/name/role-pill header on the grouped background; notification toggle, theme selector, settings nav, and logout logic preserved.*
+*• Polish: `EmptyStateWidget`/`error_widget`/`loading_overlay` swept to `.withValues`; deleted the now-orphaned `gradient_app_bar.dart`.*
+*• Summary: full-app iOS-clean redesign (Apple system-blue accent, grouped inset cards, large titles, blurred nav/tab chrome, subtle motion) across all roles + light/dark. `flutter analyze`: No issues found; debug APK builds. NOTE: on-device visual QA in both themes still recommended before release.*
