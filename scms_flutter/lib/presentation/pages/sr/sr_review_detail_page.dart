@@ -12,7 +12,6 @@ import '../../bloc/sr_review/sr_review_event.dart';
 import '../../bloc/sr_review/sr_review_state.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/error_widget.dart';
-import '../../widgets/common/gradient_app_bar.dart';
 import '../../widgets/common/loading_overlay.dart';
 import '../../widgets/common/scms_button.dart';
 import '../../widgets/common/scms_text_field.dart';
@@ -69,7 +68,7 @@ class _SrReviewDetailPageState extends State<SrReviewDetailPage> {
 				}
 			},
 			child: AppScaffold(
-				appBar: const GradientAppBar(title: 'SR Review Detail', roleBadge: 'SR', glass: true),
+				appBar: AppBar(title: const Text('SR Review Detail')),
 				body: BlocBuilder<ComplaintBloc, ComplaintState>(
 					builder: (context, complaintState) {
 						final isProcessing = context.select<SrReviewBloc, bool>(
