@@ -7,9 +7,10 @@ Output: docs/SCMS_Project_Report.docx
 Run:    python docs/report_assets/build_report.py
 """
 import os
+from datetime import datetime
 from docx import Document
 from docx.shared import Pt, Inches, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_TAB_ALIGNMENT
 from docx.enum.section import WD_SECTION
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
@@ -18,11 +19,15 @@ HERE = os.path.dirname(__file__)
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 DIAG = os.path.join(HERE, "diagrams")
 SHOT = os.path.join(ROOT, "docs", "screenshots", "ios-clean-redesign")
+LOGO = os.path.join(HERE, "rvce_logo.png")   # RVCE letterhead (reused from reference)
 OUT = os.path.join(ROOT, "docs", "SCMS_Project_Report.docx")
+
+FONT = "Times New Roman"   # report body/heading font family
 
 NAVY = RGBColor(0x1F, 0x3A, 0x5F)
 INK = RGBColor(0x1C, 0x25, 0x30)
 GREY = RGBColor(0x5B, 0x6B, 0x7B)
+BLACK = RGBColor(0x00, 0x00, 0x00)  # reference report uses plain black headings
 
 # ---------------------------------------------------------------------------
 # Project / team metadata  (EDIT the two placeholder USNs when known)
@@ -35,8 +40,8 @@ YEAR = "2025-2026"
 GUIDES = "Prof. Chandrani Chakravorty & Prof. Prashanth K"
 MEMBERS = [
     ("Pavan Naik", "1RV25MC066"),
-    ("Prabhava U V", "1RV25MC0XX"),   # <-- fill in
-    ("Prem Kamble", "1RV25MC0XX"),    # <-- fill in
+    ("Prabhava Upadhyaya V", "1RV25MC068"),
+    ("Prem Kamble", "1RV25MC074"),
     ("Pramath Hegde", "1RV25MC070"),
 ]
 
@@ -46,18 +51,16 @@ MEMBERS = [
 FIGS = [
     ("fig_architecture.png",   "Three-tier system architecture of SCMS",                       "diagram"),
     ("fig_feature_flow.png",   "Conceptual feature flow of SCMS",                              "diagram"),
-    ("01-onboarding-dark.png", "Onboarding screen introducing the app",                        "shot"),
-    ("02-login-dark.png",      "Login screen with Google Sign-In (restricted to rvce.edu.in)", "shot"),
-    ("19-google-signin-result.png", "Successful Google authentication and role redirect",      "shot"),
-    ("10-dashboard-live-data.png",  "Student dashboard (dark theme) with live complaint data", "shot"),
-    ("06-dashboard-light.png",      "Student dashboard rendered in the light theme",           "shot"),
-    ("13-submit-categories-live.png", "New-complaint form with subject, description and category chips", "shot"),
-    ("22-grammar-apply-fixed.png",  "AI grammar correction applied and AI category suggestion (Plumbing, 95%)", "shot"),
-    ("11-all-complaints-live.png",  "Complaint list showing status chips and metadata",        "shot"),
-    ("12-complaint-detail-live.png","Complaint detail with status timeline",                   "shot"),
-    ("14-after-submit.png",         "Confirmation and updated feed after submitting a complaint","shot"),
-    ("15-stats-live.png",           "Statistics / analytics dashboard",                        "shot"),
-    ("05-profile-light.png",        "Profile and grouped settings screen",                     "shot"),
+    ("30-login-light.png",     "Login screen with Google Sign-In (restricted to rvce.edu.in)", "shot"),
+    ("31-dashboard-light.png", "Student dashboard with live complaint data and status breakdown", "shot"),
+    ("32-all-complaints-light.png", "Complaint list showing status chips, severity and SLA timers", "shot"),
+    ("33-new-form-light.png",  "New-complaint form with subject, description and category chips", "shot"),
+    ("34-grammar-suggestion-light.png", "AI grammar suggestion and AI category suggestion while composing", "shot"),
+    ("35-grammar-applied-light.png",  "AI grammar correction applied and AI category suggestion (Plumbing, 100%)", "shot"),
+    ("36-complaint-detail-light.png", "Complaint detail with details and status timeline",     "shot"),
+    ("37-after-submit-light.png",     "Updated feed after submitting a complaint (Pending Review)", "shot"),
+    ("38-stats-light.png",           "Statistics / analytics dashboard",                       "shot"),
+    ("39-profile-light.png",         "Profile and grouped settings screen",                    "shot"),
     ("fig_navigation.png",     "Role-based navigation flow of SCMS",                           "diagram"),
     ("fig_ai_sequence.png",    "AI-assisted submission request sequence",                      "diagram"),
     ("fig_sr_workflow.png",    "Student Representative (SR) review workflow",                  "diagram"),
@@ -98,6 +101,40 @@ def add_field(paragraph, instr, placeholder):
         r.append(el)
 
 
+def add_running_header_footer(section, title, right_tab=Inches(6.5)):
+    """Give a section a reference-style running header and footer.
+
+    Header:  <title>                              <Month Year>
+    Footer:  Department of MCA, RVCE                     Page <N>
+    The date/right column is pushed flush-right via a right tab stop.
+    """
+    month_year = datetime.now().strftime("%B %Y")
+
+    section.header.is_linked_to_previous = False
+    section.footer.is_linked_to_previous = False
+
+    # ---- header ----
+    hp = section.header.paragraphs[0]
+    hp.text = ""
+    hp.paragraph_format.tab_stops.add_tab_stop(right_tab, WD_TAB_ALIGNMENT.RIGHT)
+    r1 = hp.add_run(title)
+    r1.font.size = Pt(9)
+    r1.font.color.rgb = GREY
+    r2 = hp.add_run("\t" + month_year)
+    r2.font.size = Pt(9)
+    r2.font.color.rgb = GREY
+
+    # ---- footer (with live PAGE field) ----
+    fp = section.footer.paragraphs[0]
+    fp.text = ""
+    fp.paragraph_format.tab_stops.add_tab_stop(right_tab, WD_TAB_ALIGNMENT.RIGHT)
+    fr = fp.add_run("Department of MCA, RVCE")
+    fr.font.size = Pt(9)
+    fr.font.color.rgb = GREY
+    fp.add_run("\tPage ").font.size = Pt(9)
+    add_field(fp, "PAGE", "1")
+
+
 def para(doc, text="", size=11, align=None, bold=False, italic=False,
          color=None, space_after=6, space_before=0, line=1.15):
     p = doc.add_paragraph()
@@ -128,14 +165,14 @@ def bullets(doc, items, size=11):
 def h1(doc, text):
     p = doc.add_heading(level=1)
     r = p.add_run(text)
-    r.font.color.rgb = NAVY
+    r.font.color.rgb = BLACK
     return p
 
 
 def h2(doc, text):
     p = doc.add_heading(level=2)
     r = p.add_run(text)
-    r.font.color.rgb = NAVY
+    r.font.color.rgb = BLACK
     return p
 
 
@@ -182,17 +219,19 @@ doc = Document()
 
 # base styles
 normal = doc.styles["Normal"]
-normal.font.name = "Calibri"
+normal.font.name = FONT
 normal.font.size = Pt(11)
 normal.paragraph_format.line_spacing = 1.15
 normal.paragraph_format.space_after = Pt(6)
+# force the east-asian slot too so the theme's Calibri never leaks back in
+normal.element.get_or_add_rPr().get_or_add_rFonts().set(qn("w:eastAsia"), FONT)
 
-for lvl, sz in ((1, 16), (2, 13)):
+for lvl, sz in ((1, 15), (2, 13)):
     st = doc.styles[f"Heading {lvl}"]
-    st.font.name = "Calibri"
+    st.font.name = FONT
     st.font.size = Pt(sz)
     st.font.bold = True
-    st.font.color.rgb = NAVY
+    st.font.color.rgb = BLACK
 
 sec = doc.sections[0]
 sec.top_margin = Inches(1)
@@ -203,38 +242,63 @@ sec.right_margin = Inches(1)
 # ---------------------------------------------------------------------------
 # COVER PAGE
 # ---------------------------------------------------------------------------
-def cover_line(text, size, bold=False, color=INK, after=4, italic=False, caps=False):
-    para(doc, text, size=size, align=WD_ALIGN_PARAGRAPH.CENTER, bold=bold,
-         italic=italic, color=color, space_after=after, line=1.1)
+def add_logo(width=5.9):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_after = Pt(6)
+    p.add_run().add_picture(LOGO, width=Inches(width))
 
-para(doc, "", space_after=10)
-cover_line(COURSE_NAME, 14, bold=True, color=NAVY, after=2)
-cover_line(COURSE_CODE, 13, bold=True, color=NAVY, after=2)
-cover_line(LAB, 12, bold=True, color=GREY, after=18)
-cover_line("A Project Report on", 12, italic=True, after=6)
-cover_line(TITLE, 22, bold=True, color=NAVY, after=6)
-cover_line("A campus complaint-management platform with AI-assisted triage", 11,
-           italic=True, color=GREY, after=20)
-cover_line("submitted by", 12, italic=True, after=8)
-for name, usn in MEMBERS:
-    cover_line(name, 13, bold=True, after=1)
-    cover_line(usn, 12, color=GREY, after=8)
-cover_line("under the guidance of", 12, italic=True, after=6)
-cover_line(GUIDES, 13, bold=True, after=2)
-cover_line("Assistant Professor", 11, after=2)
-cover_line("Department of Master of Computer Applications", 11, after=2)
-cover_line("RV College of Engineering", 11, after=18)
-cover_line("Department of Master of Computer Applications", 12, bold=True, color=NAVY, after=2)
-cover_line("RV College of Engineering, Bengaluru – 560059", 12, bold=True, color=NAVY, after=2)
-cover_line(YEAR, 12, bold=True, after=2)
+
+def cover_line(text, size, bold=False, color=BLACK, after=4, before=0, italic=False):
+    para(doc, text, size=size, align=WD_ALIGN_PARAGRAPH.CENTER, bold=bold,
+         italic=italic, color=color, space_after=after, space_before=before, line=1.1)
+
+
+def borderless_center_table(rows, cols):
+    t = doc.add_table(rows=rows, cols=cols)
+    t.alignment = 1  # center on page
+    set_cell_border_none(t)
+    return t
+
+
+# ---- COVER (mirrors the reference report's layout) ----
+add_logo()
+cover_line(COURSE_NAME, 14, bold=True, after=0)          # MOBILE APPLICATION DEVELOPMENT
+cover_line(COURSE_CODE, 14, bold=True, after=0)          # MCA221IA
+cover_line(LAB, 14, bold=True, after=0)                  # SEE PROJECT BASED LABORATORY
+cover_line(TITLE, 16, bold=True, before=6, after=10)
+cover_line("submitted by", 11, after=6)
+
+# student names + USNs in a borderless 2-column table
+mt = borderless_center_table(len(MEMBERS), 2)
+for i, (name, usn) in enumerate(MEMBERS):
+    for j, val in enumerate((name, usn)):
+        cp = mt.rows[i].cells[j].paragraphs[0]
+        cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = cp.add_run(val)
+        r.font.size = Pt(11)
+
+cover_line("under the guidance of", 11, before=8, after=4)
+# guide in a borderless 1x1 table
+gt = borderless_center_table(1, 1)
+gp = gt.rows[0].cells[0].paragraphs[0]
+gp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+gr = gp.add_run(GUIDES)
+gr.font.size = Pt(11)
+gr.font.bold = True
+
+cover_line("Department of Master of Computer Applications", 11, bold=True, before=10, after=0)
+cover_line("RV College of Engineering, Bengaluru – 560059", 11, bold=True, after=0)
+cover_line(YEAR, 11, bold=True, after=0)
 
 doc.add_page_break()
 
 # ---------------------------------------------------------------------------
-# CERTIFICATE
+# CERTIFICATE (mirrors the reference report's layout)
 # ---------------------------------------------------------------------------
-para(doc, "CERTIFICATE", size=18, align=WD_ALIGN_PARAGRAPH.CENTER, bold=True,
-     color=NAVY, space_after=18)
+add_logo()
+para(doc, "CERTIFICATE", size=13, align=WD_ALIGN_PARAGRAPH.CENTER, bold=True,
+     color=BLACK, space_after=10)
 
 names_join = ", ".join(f"{n} ({u})" for n, u in MEMBERS[:-1]) + \
     f" and {MEMBERS[-1][0]} ({MEMBERS[-1][1]})"
@@ -243,7 +307,7 @@ cert = (f"Certified that the project entitled “{TITLE}” on "
         f"{names_join} who have successfully completed the project for the final "
         f"SEE Lab Examination, incorporating all concepts of the course conducted "
         f"by the Department of MCA, RV College of Engineering, Bengaluru.")
-para(doc, cert, size=11.5, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_after=36, line=1.5)
+para(doc, cert, size=11, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_after=10, line=1.5)
 
 sig = doc.add_table(rows=1, cols=2)
 set_cell_border_none(sig)
@@ -252,7 +316,7 @@ right = sig.rows[0].cells[1]
 for cell, lines in ((left, ["Internal Guide", GUIDES, "Assistant Professor",
                             "Department of MCA", "RV College of Engineering"]),
                     (right, ["Head of the Department", "Dr. Jasmine K S",
-                             "Associate Professor & Director", "Department of MCA",
+                             "Associate Professor & Director", "Department of MCA,",
                              "RV College of Engineering"])):
     for i, ln in enumerate(lines):
         p = cell.paragraphs[0] if i == 0 else cell.add_paragraph()
@@ -260,14 +324,16 @@ for cell, lines in ((left, ["Internal Guide", GUIDES, "Assistant Professor",
         r.font.size = Pt(11)
         r.font.bold = (i <= 1)
 
-para(doc, "", space_after=30)
-para(doc, "External Viva Examination", size=12, bold=True, color=NAVY, space_after=12)
-viva = doc.add_table(rows=3, cols=2)
-viva.style = "Table Grid"
-viva.rows[0].cells[0].paragraphs[0].add_run("Name of Examiners").bold = True
-viva.rows[0].cells[1].paragraphs[0].add_run("Signature with Date").bold = True
-viva.rows[1].cells[0].paragraphs[0].add_run("1.")
-viva.rows[2].cells[0].paragraphs[0].add_run("2.")
+para(doc, "", space_after=20)
+para(doc, "External Viva Examination", size=11, align=WD_ALIGN_PARAGRAPH.CENTER,
+     bold=True, color=BLACK, space_after=10)
+vp = doc.add_paragraph()
+vr = vp.add_run("Name of Examiners\t\t\tSignature with Date")
+vr.font.bold = True
+vr.font.size = Pt(11)
+for label in ("1.", "2."):
+    lp = doc.add_paragraph()
+    lp.add_run(label).font.size = Pt(11)
 
 doc.add_page_break()
 
@@ -275,7 +341,7 @@ doc.add_page_break()
 # TABLE OF CONTENTS
 # ---------------------------------------------------------------------------
 para(doc, "Table of Contents", size=16, align=WD_ALIGN_PARAGRAPH.CENTER,
-     bold=True, color=NAVY, space_after=12)
+     bold=True, color=BLACK, space_after=12)
 tocp = doc.add_paragraph()
 add_field(tocp, 'TOC \\o "1-2" \\h \\z \\u',
           "Right-click here and choose “Update Field” to build the table of contents.")
@@ -285,7 +351,7 @@ doc.add_page_break()
 # LIST OF FIGURES  (static, generated from FIGS)
 # ---------------------------------------------------------------------------
 para(doc, "List of Figures", size=16, align=WD_ALIGN_PARAGRAPH.CENTER,
-     bold=True, color=NAVY, space_after=12)
+     bold=True, color=BLACK, space_after=12)
 for name, cap, _ in FIGS:
     p = doc.add_paragraph()
     p.paragraph_format.space_after = Pt(4)
@@ -294,7 +360,12 @@ for name, cap, _ in FIGS:
     r.font.size = Pt(10.5)
     r2 = p.add_run(cap)
     r2.font.size = Pt(10.5)
-doc.add_page_break()
+
+# Start a new section for the report body so the front matter (cover, certificate,
+# TOC, list of figures) stays free of the running header/footer, while every body
+# page carries the reference-style header + footer with live page numbers.
+body_section = doc.add_section(WD_SECTION.NEW_PAGE)
+add_running_header_footer(body_section, TITLE)
 
 # ===========================================================================
 # 1. INTRODUCTION
@@ -617,45 +688,46 @@ para(doc,
      "described through the workflow diagrams in Section 6.",
      align=WD_ALIGN_PARAGRAPH.JUSTIFY)
 
-h2(doc, "5.1 Onboarding and Authentication")
+h2(doc, "5.1 Authentication and Dashboard")
 para(doc,
-     "New users are greeted by a short onboarding screen and then sign in with "
-     "Google. Sign-in is restricted to institutional accounts, and on success the "
-     "user is redirected to the dashboard appropriate to their role.",
+     "Users sign in with Google, restricted to institutional accounts, and on "
+     "success are redirected to the dashboard appropriate to their role. The "
+     "student dashboard summarises complaint counts, highlights items that need "
+     "attention and shows a live status breakdown.",
      align=WD_ALIGN_PARAGRAPH.JUSTIFY)
-add_shots_row(doc, ["01-onboarding-dark.png", "02-login-dark.png"])
-add_shots_row(doc, ["19-google-signin-result.png", "10-dashboard-live-data.png"])
+add_shots_row(doc, ["30-login-light.png", "31-dashboard-light.png"])
 
-h2(doc, "5.2 Student Dashboard")
+h2(doc, "5.2 Complaint List and Submission")
 para(doc,
-     "The dashboard summarises the student’s complaints and provides quick access "
-     "to raise a new one. The same screen is shown below in the light theme.",
+     "The complaint list shows every complaint with a status chip, severity, "
+     "category and SLA timer, and can be searched and filtered. The new-complaint "
+     "form collects the subject, description, location, category and severity, and "
+     "allows up to three photos to be attached.",
      align=WD_ALIGN_PARAGRAPH.JUSTIFY)
-add_shots_row(doc, ["06-dashboard-light.png", "11-all-complaints-live.png"])
+add_shots_row(doc, ["32-all-complaints-light.png", "33-new-form-light.png"])
 
-h2(doc, "5.3 Raising a Complaint and AI Assistance")
+h2(doc, "5.3 AI Assistance — Grammar and Category")
 para(doc,
-     "The new-complaint form collects the subject, description, location, category "
-     "and severity, and allows photos to be attached. As the description is typed, "
-     "the AI grammar suggestion and the AI category suggestion appear. Figure 9 "
-     "shows the corrected description together with the suggested category "
-     "(Plumbing) at 95% confidence and a short justification.",
-     align=WD_ALIGN_PARAGRAPH.JUSTIFY)
-add_shots_row(doc, ["13-submit-categories-live.png", "22-grammar-apply-fixed.png"])
+     "As the description is typed, the AI grammar suggestion and the AI category "
+     "suggestion appear. Figure 8 shows the corrected description applied together "
+     "with the suggested category (Plumbing) at 100% confidence and a short "
+     "justification.", align=WD_ALIGN_PARAGRAPH.JUSTIFY)
+add_shots_row(doc, ["34-grammar-suggestion-light.png", "35-grammar-applied-light.png"])
 
-h2(doc, "5.4 Complaint Detail, Confirmation and Analytics")
+h2(doc, "5.4 Complaint Detail and Analytics")
 para(doc,
-     "Each complaint has a detail view with its status timeline. After submission "
-     "the feed updates to reflect the new complaint, and the statistics screen "
-     "presents aggregated analytics.", align=WD_ALIGN_PARAGRAPH.JUSTIFY)
-add_shots_row(doc, ["12-complaint-detail-live.png", "14-after-submit.png"])
-add_shots_row(doc, ["15-stats-live.png", "05-profile-light.png"])
+     "Each complaint has a detail view with its full metadata and status timeline. "
+     "After submission the feed updates to reflect the new complaint, the statistics "
+     "screen presents aggregated analytics, and the profile screen groups account "
+     "and preference settings.", align=WD_ALIGN_PARAGRAPH.JUSTIFY)
+add_shots_row(doc, ["36-complaint-detail-light.png", "37-after-submit-light.png"])
+add_shots_row(doc, ["38-stats-light.png", "39-profile-light.png"])
 
 h2(doc, "5.5 Navigation Flow")
 para(doc,
      "Navigation is driven by the authenticated role. After sign-in, go_router "
      "redirects the user to the correct role home and exposes only the routes that "
-     "role is allowed to use, as shown in Figure 15.",
+     "role is allowed to use, as shown in Figure 13.",
      align=WD_ALIGN_PARAGRAPH.JUSTIFY)
 add_diagram(doc, "fig_navigation.png")
 
@@ -694,7 +766,7 @@ para(doc,
      "/check-duplicate endpoints. Grammar and categorisation run while the user "
      "types (debounced by 800 ms); embedding and duplicate checks run after the "
      "complaint row exists. Every AI endpoint fails safe, returning a usable "
-     "default if Gemini or the database is unavailable. Figure 16 shows the request "
+     "default if Gemini or the database is unavailable. Figure 14 shows the request "
      "sequence.", align=WD_ALIGN_PARAGRAPH.JUSTIFY)
 add_diagram(doc, "fig_ai_sequence.png")
 
@@ -703,7 +775,7 @@ para(doc,
      "The SR module lists complaints awaiting review, and lets the SR approve and "
      "assign a complaint to staff or return it to the student. On assignment the "
      "complaint moves to ASSIGNED and the assigned staff member is notified. "
-     "Figure 17 shows the end-to-end review workflow across the student, AI service, "
+     "Figure 15 shows the end-to-end review workflow across the student, AI service, "
      "SR and staff.", align=WD_ALIGN_PARAGRAPH.JUSTIFY)
 add_diagram(doc, "fig_sr_workflow.png")
 
@@ -712,7 +784,7 @@ para(doc,
      "Staff advance a complaint through IN_PROGRESS to RESOLVED, and each change is "
      "recorded on the complaint’s status timeline. Two node-cron jobs support the "
      "SLA policy: one marks overdue complaints as SLA_BREACHED, and another "
-     "auto-approves complaints left too long in SR review. Figure 18 shows the full "
+     "auto-approves complaints left too long in SR review. Figure 16 shows the full "
      "status lifecycle.", align=WD_ALIGN_PARAGRAPH.JUSTIFY)
 add_diagram(doc, "fig_lifecycle.png")
 
@@ -755,7 +827,7 @@ para(doc,
      "stores it, embeds it and checks for duplicates; the SR reviews and assigns it; "
      "staff are notified and work the complaint to resolution while the SLA job "
      "watches the deadline; and finally the student is notified and rates the "
-     "outcome. The architecture in Figure 1 and the workflow in Figures 17 and 18 "
+     "outcome. The architecture in Figure 1 and the workflow in Figures 15 and 16 "
      "together describe this end-to-end path.", align=WD_ALIGN_PARAGRAPH.JUSTIFY)
 
 # ===========================================================================
@@ -786,7 +858,7 @@ h2(doc, "7.3 Demonstration Notes")
 para(doc,
      "The screenshots in Section 5 are captured from live runs of the application "
      "against the running backend and AI service, including the AI grammar "
-     "correction and category suggestion shown in Figure 9. Because the AI service "
+     "correction and category suggestion shown in Figure 8. Because the AI service "
      "is best-effort, the demonstration also shows the system continuing to function "
      "normally when an AI response is temporarily unavailable.",
      align=WD_ALIGN_PARAGRAPH.JUSTIFY)
