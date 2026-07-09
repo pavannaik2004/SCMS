@@ -160,6 +160,42 @@ class ComplaintRepository {
     }
   }
 
+  /// Staff: submit proof-of-resolution (photos + notes) -> RESOLVED.
+  Future<void> resolveWithProof(String id, {required List<String> photoPaths, String? notes}) async {
+    if (!await _networkInfo.isConnected) throw const NetworkFailure();
+    try {
+      await _remoteDataSource.resolveWithProof(id, photoPaths: photoPaths, notes: notes);
+    } on ServerException catch (e) {
+      throw ServerFailure(message: e.message, statusCode: e.statusCode);
+    }
+  }
+
+  /// Admin: verify a staff resolution — decision `APPROVE` or `REDO`.
+  Future<void> verifyResolution(String id, {required String decision, String? notes}) async {
+    if (!await _networkInfo.isConnected) throw const NetworkFailure();
+    try {
+      await _remoteDataSource.verifyResolution(id, decision: decision, notes: notes);
+    } on ServerException catch (e) {
+      throw ServerFailure(message: e.message, statusCode: e.statusCode);
+    }
+  }
+
+  /// Admin: download the filtered complaints Excel export as raw bytes.
+  Future<List<int>> exportComplaintsXlsx({
+    String? status, String? departmentId, String? categoryId,
+    String? severity, String? from, String? to,
+  }) async {
+    if (!await _networkInfo.isConnected) throw const NetworkFailure();
+    try {
+      return await _remoteDataSource.exportComplaintsXlsx(
+        status: status, departmentId: departmentId, categoryId: categoryId,
+        severity: severity, from: from, to: to,
+      );
+    } on ServerException catch (e) {
+      throw ServerFailure(message: e.message, statusCode: e.statusCode);
+    }
+  }
+
   Future<List<ComplaintModel>> getAllComplaints({
     String? status, String? departmentId, String? categoryId,
     String? severity, String? search, int page = 0,

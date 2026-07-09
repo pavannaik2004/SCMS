@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -59,8 +60,10 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
           final authState = context.watch<AuthBloc>().state;
           final role =
               authState is AuthAuthenticated ? authState.user.role : null;
-          final canAssign =
-              role == 'ROLE_ADMIN' || role == 'ROLE_DEPT_HEAD';
+          final isAdmin = role == 'ROLE_ADMIN' || role == 'ROLE_DEPT_HEAD';
+          final canAssign = isAdmin;
+          // Admin verifies the staff's proof once the ticket is RESOLVED.
+          final canVerify = isAdmin && c.status == 'RESOLVED';
           // The submitter can edit/delete their own complaint.
           final isOwner = authState is AuthAuthenticated &&
               authState.user.id == c.submittedById;
@@ -169,6 +172,36 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
                                     ))
                                 .toList(),
                           ),
+                        ),
+                      ],
+                      if (c.proofUrls.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _Section(
+                          title: 'Resolution Proof',
+                          child: _buildProofGallery(c.proofUrls),
+                        ),
+                      ],
+                      if (canVerify) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ScmsButton(
+                                label: 'Approve',
+                                icon: Icons.check_circle_outline_rounded,
+                                onPressed: () => _approveResolution(c),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ScmsButton(
+                                label: 'Send back',
+                                icon: Icons.replay_rounded,
+                                variant: ScmsButtonVariant.secondary,
+                                onPressed: () => _sendBackForRework(c),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                       if (c.rating != null) ...[
@@ -387,6 +420,120 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to delete complaint.')),
       );
+    }
+  }
+
+  /// Horizontal gallery of proof photos. URLs are server-relative (/Storage/..)
+  /// so they are prefixed with the API base URL.
+  Widget _buildProofGallery(List<String> urls) {
+    return SizedBox(
+      height: 120,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: urls.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final url = urls[i].startsWith('http')
+              ? urls[i]
+              : '${ApiConstants.baseUrl}${urls[i]}';
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              url,
+              width: 120,
+              height: 120,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 120,
+                height: 120,
+                color: AppColors.surfaceVariant,
+                child: const Icon(Icons.broken_image_outlined),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _approveResolution(ComplaintModel c) async {
+    final repository = context.read<ComplaintRepository>();
+    final bloc = context.read<ComplaintBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await repository.verifyResolution(c.id, decision: 'APPROVE');
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Complaint marked as completed.')),
+      );
+      bloc.add(LoadComplaintDetail(complaintId: c.id));
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to approve: $e')),
+      );
+    }
+  }
+
+  Future<void> _sendBackForRework(ComplaintModel c) async {
+    final repository = context.read<ComplaintRepository>();
+    final bloc = context.read<ComplaintBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final notesController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Send back for rework'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('The task returns to the same staff member as In Progress.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: notesController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Reason / instructions',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Send back'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      notesController.dispose();
+      return;
+    }
+
+    try {
+      await repository.verifyResolution(
+        c.id,
+        decision: 'REDO',
+        notes: notesController.text.trim().isEmpty
+            ? null
+            : notesController.text.trim(),
+      );
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Sent back to staff for rework.')),
+      );
+      bloc.add(LoadComplaintDetail(complaintId: c.id));
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to send back: $e')),
+      );
+    } finally {
+      notesController.dispose();
     }
   }
 

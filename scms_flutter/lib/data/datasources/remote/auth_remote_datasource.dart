@@ -33,6 +33,33 @@ class AuthResponse {
   }
 }
 
+/// A seeded demo account exposed by the development-only /auth/dev-users endpoint.
+class DevUser {
+  final String id;
+  final String name;
+  final String email;
+  final String role;
+  final String? departmentName;
+
+  const DevUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.role,
+    this.departmentName,
+  });
+
+  factory DevUser.fromJson(Map<String, dynamic> json) {
+    return DevUser(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      email: json['email'] as String,
+      role: json['role'] as String,
+      departmentName: json['departmentName'] as String?,
+    );
+  }
+}
+
 /// Remote data source for authentication via Google OAuth 2.0
 class AuthRemoteDataSource {
   final DioClient _dioClient;
@@ -103,6 +130,23 @@ class AuthRemoteDataSource {
       }
       throw ServerException(
         message: e.response?.data?['message'] ?? 'Authentication failed',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// Fetch the seeded demo accounts (development only) for the dev-login picker.
+  Future<List<DevUser>> getDevUsers() async {
+    try {
+      final response = await _dioClient.dio.get(ApiConstants.authDevUsers);
+      final data = response.data as Map<String, dynamic>;
+      final list = (data['users'] as List<dynamic>? ?? [])
+          .map((e) => DevUser.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return list;
+    } on DioException catch (e) {
+      throw ServerException(
+        message: e.response?.data?['message'] ?? 'Failed to load demo users',
         statusCode: e.response?.statusCode,
       );
     }

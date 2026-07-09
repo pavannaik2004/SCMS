@@ -55,7 +55,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onMockSignIn(MockSignInRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      final user = await _authRepository.signInWithMock(event.role);
+      final user = await _authRepository.signInWithMock(event.userId);
       await _authRepository.setOnboardingComplete();
       emit(AuthAuthenticated(user: user));
     } catch (e) {

@@ -547,3 +547,24 @@ uvicorn main:app --reload --port 8000
 *• TODO: two team USNs (Prabhava U V, Prem Kamble) are still placeholders `1RV25MC0XX` in `build_report.py` MEMBERS — fill and rerun the script.*
 
 *Follow-up (2026-07-06): switched the whole report to **Times New Roman** and rebuilt the **cover + certificate to mirror the reference exactly** (was a custom design). Reused the RVCE letterhead logo (extracted from the reference docx → `docs/report_assets/rvce_logo.png`) atop both pages; members now render in a borderless 2-column name/USN table, the guide in a 1×1 table, and the viva block as the reference's tabbed “Name of Examiners … Signature with Date / 1. / 2.” paragraphs. Cover course lines 14pt, title 16pt, CERTIFICATE 13pt; TOC/List-of-Figures titles switched navy→black. `build_report.py` regenerated the docx.*
+
+---
+
+*Last updated: 2026-07-09 by Claude Code (AI agent) — **Full end-to-end complaint workflow + demo tooling + Excel export**. Cross-cutting (Prem's backend + schema, Prabhava's staff/SR/admin/stats pages, seed) — done at the user's request. Plan: `~/.claude/plans/what-complete-complaint-process-proud-beacon.md`.*
+*### Lifecycle formalized (adds the missing admin-verification loop)*
+*• New canonical flow: `PENDING_SR_REVIEW → OPEN` (SR approve) `→ ASSIGNED` (admin) `→ IN_PROGRESS` (staff start) `→ RESOLVED` (staff uploads **proof**, admins notified) `→ COMPLETED` (admin verifies; submitter notified to rate) `→ CLOSED` (rating). Admin can also **send back for rework** (RESOLVED→IN_PROGRESS, same staff re-notified). `REJECTED` stays SR-terminal. `COMPLETED` is a NEW status string.*
+*### Schema (migration `workflow_proof_and_completion`)*
+*• `Complaint.resolvedAt`/`completedAt` (nullable) + `MediaItem.purpose` (`ORIGINAL`|`PROOF`).*
+*### Backend (`routes/complaints.js`, `auth.js`, `middleware/authenticate.js`, `utils/jwtHelper.js`, `enrichComplaints.js`, `package.json`)*
+*• `POST /:id/resolve` (assigned staff, multipart `media`) → proof MediaItems + `RESOLVED` + notify admins. `POST /:id/verify-resolution` (admin, `{decision:APPROVE|REDO}`) → COMPLETED (+notify submitter) or IN_PROGRESS (+notify staff). Rating gate moved `RESOLVED`→`COMPLETED`. `RESOLVED` removed from the free `PATCH /:id/status` enum. `enrichComplaints` now splits `photoUrls` (original) vs `proofUrls` (proof).*
+*• `GET /api/complaints/export` (admin, **exceljs**) streams a filtered `.xlsx` (status/dept/category/severity/date-range).*
+*• Dev-login: `GET /api/auth/dev-users` (dev-only) lists seeded demo accounts; mock token extended to `mock_access_token_ID_<userId>` so you sign in as a SPECIFIC seeded user (jwtHelper parses `_ID_`, authenticate resolves by id → real role/dept). Legacy `_ROLE_` path kept.*
+*### Seed (`prisma/seed_sample_data.js` rewritten)*
+*• 5 students + 4 staff + 3 SRs (First/Second/Third Year) + 1 admin (`admin@rvce.edu.in`), real names, deterministic ids. 20 complaints (`SCMS-2026-000xx`) spread across every stage with realistic timelines + proof media (reuses real files in `Storage/`).*
+*### Flutter*
+*• Dev login (`login_page.dart`): 4 role buttons kept; Student/Staff/SR open a **person picker** sheet (from `/auth/dev-users`), Admin signs in directly. `MockSignInRequested(userId:)`; `signInWithMock` now hydrates the real user via `/auth/me`.*
+*• Staff detail: “Submit Resolution with Proof” (photos + notes → `/resolve`); bulk-Resolve replaced with a per-task hint. Admin (shared complaint detail): proof gallery + **Approve** / **Send back** actions on RESOLVED. Model gained `proofUrls`; `canRate` now gates on `COMPLETED`. `COMPLETED` added to status label/color + all filter/breakdown lists.*
+*• Stats page: admin-only **Export to Excel** (filter sheet → saves `.xlsx` to device via `path_provider`).*
+*• **Submit bug**: the datasource read the wrong error key (`data['message']` vs the envelope's `error.message`), masking real submit failures behind the generic "Failed to submit" string — fixed with a shared `_errMessage` extractor so the true server error surfaces. (Confirm the actual submit end-to-end during on-device verification.)*
+*• `flutter analyze`: **No issues found.***
+*### PENDING VERIFICATION (needs a running stack): `npx prisma migrate dev`, `npm install` (exceljs), re-seed, then walk the happy path + rework loop + reject + export on-device. NODE_ENV must be `development` for the dev-login picker + mock tokens.*

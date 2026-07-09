@@ -27,7 +27,7 @@ class AttentionCard extends StatelessWidget {
     final now = DateTime.now();
     final atRisk = complaints.where((c) {
       if (c.isSlaBreached &&
-          !['RESOLVED', 'CLOSED', 'REJECTED'].contains(c.status)) {
+          !['RESOLVED', 'COMPLETED', 'CLOSED', 'REJECTED'].contains(c.status)) {
         return true;
       }
       if (c.isSlaActive && c.slaDeadline != null) {

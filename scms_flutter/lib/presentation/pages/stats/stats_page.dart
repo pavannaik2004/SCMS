@@ -1,13 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/analytics_model.dart';
 import '../../../data/repositories/complaint_repository.dart';
+import '../../bloc/auth/auth_bloc.dart';
+import '../../bloc/auth/auth_state.dart';
 import '../../bloc/all_complaints/all_complaints_cubit.dart';
 import '../../bloc/all_complaints/all_complaints_state.dart';
 import '../../bloc/analytics/analytics_cubit.dart';
@@ -63,10 +68,20 @@ class _StatsViewState extends State<_StatsView> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    final role = authState is AuthAuthenticated ? authState.user.role : null;
+    final isAdmin = role == 'ROLE_ADMIN' || role == 'ROLE_DEPT_HEAD';
+
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Statistics'),
         actions: [
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.download_rounded),
+              tooltip: 'Export to Excel',
+              onPressed: _showExportSheet,
+            ),
           IconButton(
             icon: const Icon(Icons.ios_share_rounded),
             tooltip: 'Copy as CSV',
@@ -183,6 +198,154 @@ class _StatsViewState extends State<_StatsView> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Analytics copied to clipboard as CSV.')),
     );
+  }
+
+  static const _exportStatuses = [
+    'All', 'PENDING_SR_REVIEW', 'OPEN', 'ASSIGNED', 'IN_PROGRESS',
+    'RESOLVED', 'COMPLETED', 'CLOSED', 'REJECTED',
+  ];
+  static const _exportSeverities = ['All', 'HIGH', 'MEDIUM', 'LOW'];
+
+  /// Admin-only: filter sheet -> download a real .xlsx of complaints and save it
+  /// to the device.
+  void _showExportSheet() {
+    String status = 'All';
+    String severity = 'All';
+    DateTimeRange? range;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16, right: 16, top: 8,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Export Complaints to Excel', style: AppTextStyles.titleLarge),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Downloads a filtered .xlsx and saves it to this device.',
+                    style: AppTextStyles.bodySmall
+                        .copyWith(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: status,
+                    decoration: const InputDecoration(
+                      labelText: 'Status', border: OutlineInputBorder()),
+                    items: _exportStatuses
+                        .map((s) => DropdownMenuItem(
+                            value: s,
+                            child: Text(s == 'All' ? 'All statuses' : s.toStatusLabel())))
+                        .toList(),
+                    onChanged: (v) => setSheetState(() => status = v ?? 'All'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: severity,
+                    decoration: const InputDecoration(
+                      labelText: 'Severity', border: OutlineInputBorder()),
+                    items: _exportSeverities
+                        .map((s) => DropdownMenuItem(
+                            value: s, child: Text(s == 'All' ? 'All severities' : s)))
+                        .toList(),
+                    onChanged: (v) => setSheetState(() => severity = v ?? 'All'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.date_range_rounded),
+                    label: Text(range == null
+                        ? 'Date range (optional)'
+                        : '${range!.start.toString().split(' ').first} → ${range!.end.toString().split(' ').first}'),
+                    onPressed: () async {
+                      final picked = await showDateRangePicker(
+                        context: ctx,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now().add(const Duration(days: 1)),
+                        initialDateRange: range,
+                      );
+                      if (picked != null) setSheetState(() => range = picked);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.download_rounded),
+                      label: const Text('Export'),
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _runExport(
+                          status: status == 'All' ? null : status,
+                          severity: severity == 'All' ? null : severity,
+                          range: range,
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _runExport({
+    String? status,
+    String? severity,
+    DateTimeRange? range,
+  }) async {
+    final repository = context.read<ComplaintRepository>();
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Generating Excel export…')),
+    );
+    try {
+      final bytes = await repository.exportComplaintsXlsx(
+        status: status,
+        severity: severity,
+        from: range?.start.toIso8601String(),
+        to: range?.end.toIso8601String(),
+      );
+
+      // Save to an accessible device directory (app-external on Android).
+      Directory dir;
+      if (Platform.isAndroid) {
+        dir = await getExternalStorageDirectory() ??
+            await getApplicationDocumentsDirectory();
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+      final stamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .split('.')
+          .first;
+      final file = File('${dir.path}/complaints-$stamp.xlsx');
+      await file.writeAsBytes(bytes);
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Saved ${bytes.length ~/ 1024} KB to ${file.path}'),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
+    }
   }
 
   Widget _buildKpiRow(AnalyticsModel a) {

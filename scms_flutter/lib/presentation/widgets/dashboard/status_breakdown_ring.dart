@@ -33,6 +33,7 @@ class StatusBreakdownRing extends StatelessWidget {
       'ASSIGNED',
       'IN_PROGRESS',
       'RESOLVED',
+      'COMPLETED',
       'CLOSED',
       'REJECTED',
     ];

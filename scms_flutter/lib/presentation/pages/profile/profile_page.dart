@@ -168,10 +168,10 @@ class _ProfilePageState extends State<ProfilePage> {
             state is MyComplaintsLoaded ? state.complaints : const [];
         final total = complaints.length;
         final active = complaints
-            .where((c) => !['RESOLVED', 'CLOSED', 'REJECTED'].contains(c.status))
+            .where((c) => !['RESOLVED', 'COMPLETED', 'CLOSED', 'REJECTED'].contains(c.status))
             .length;
         final resolved = complaints
-            .where((c) => c.status == 'RESOLVED' || c.status == 'CLOSED')
+            .where((c) => ['RESOLVED', 'COMPLETED', 'CLOSED'].contains(c.status))
             .length;
         return Row(
           children: [

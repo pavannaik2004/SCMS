@@ -11,19 +11,32 @@ const { generateComplaintNumber } = require('../services/complaintNumber');
 const { generateAndStoreEmbedding } = require('../services/aiProxy');
 const { sendPushNotification } = require('../services/fcm');
 const { enrichComplaints } = require('../utils/enrichComplaints');
+const ExcelJS = require('exceljs');
 const logger = require('../utils/logger');
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // Schemas for validation
+// NOTE: 'RESOLVED' is intentionally NOT settable here — staff must resolve via
+// POST /:id/resolve (which requires proof media). 'COMPLETED' is set only by the
+// admin via POST /:id/verify-resolution. This endpoint covers the early staff
+// step (ASSIGNED -> IN_PROGRESS) plus admin overrides.
 const statusUpdateSchema = z.object({
-  status: z.enum(['ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED']),
+  status: z.enum(['ASSIGNED', 'IN_PROGRESS', 'CLOSED', 'REJECTED']),
   notes: z.string().optional()
 });
 
 const assignSchema = z.object({
-  assignedToId: z.string().uuid()
+  // Not .uuid() — seeded/dev demo staff use readable ids (e.g. demo-staff-electrical),
+  // while real Google users get UUIDs. Any non-empty id is accepted; existence +
+  // ROLE_STAFF/ROLE_ADMIN are validated against the DB in the handler.
+  assignedToId: z.string().min(1)
+});
+
+const verifyResolutionSchema = z.object({
+  decision: z.enum(['APPROVE', 'REDO']),
+  notes: z.string().optional()
 });
 
 const ratingSchema = z.object({
@@ -167,6 +180,94 @@ router.get('/', async (req, res, next) => {
         totalPages: Math.ceil(total / Number(limit))
       }
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/complaints/export
+ * Admin-only Excel (.xlsx) export of complaints with optional filters
+ * (status, departmentId, categoryId, severity, from/to on createdAt).
+ * Streams a spreadsheet the Flutter app saves to the device.
+ */
+router.get('/export', requireRole('ROLE_ADMIN', 'ROLE_DEPT_HEAD'), async (req, res, next) => {
+  try {
+    const { status, departmentId, categoryId, severity, from, to } = req.query;
+
+    const whereClause = {};
+    if (status) whereClause.status = status;
+    if (departmentId) whereClause.departmentId = departmentId;
+    if (categoryId) whereClause.categoryId = categoryId;
+    if (severity) whereClause.severity = severity;
+    if (from || to) {
+      whereClause.createdAt = {};
+      if (from) whereClause.createdAt.gte = new Date(from);
+      if (to) whereClause.createdAt.lte = new Date(to);
+    }
+
+    const complaints = await prisma.complaint.findMany({
+      where: whereClause,
+      include: {
+        submittedBy: { select: { id: true, name: true, email: true } },
+        mediaItems: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    await enrichComplaints(complaints);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'SCMS';
+    workbook.created = new Date();
+    const sheet = workbook.addWorksheet('Complaints');
+
+    sheet.columns = [
+      { header: 'Complaint No.', key: 'complaintNumber', width: 20 },
+      { header: 'Title', key: 'title', width: 34 },
+      { header: 'Category', key: 'categoryName', width: 16 },
+      { header: 'Department', key: 'departmentName', width: 24 },
+      { header: 'Location', key: 'location', width: 30 },
+      { header: 'Severity', key: 'severity', width: 12 },
+      { header: 'Status', key: 'status', width: 18 },
+      { header: 'Submitted By', key: 'submittedByName', width: 20 },
+      { header: 'Assigned To', key: 'assignedToName', width: 20 },
+      { header: 'Created At', key: 'createdAt', width: 22 },
+      { header: 'Resolved At', key: 'resolvedAt', width: 22 },
+      { header: 'Completed At', key: 'completedAt', width: 22 },
+      { header: 'SLA Breached', key: 'isSlaBreached', width: 14 },
+      { header: 'Rating', key: 'rating', width: 10 },
+      { header: 'Rating Comment', key: 'ratingComment', width: 36 }
+    ];
+    sheet.getRow(1).font = { bold: true };
+
+    const fmt = (d) => (d ? new Date(d).toISOString().replace('T', ' ').slice(0, 16) : '');
+
+    for (const c of complaints) {
+      sheet.addRow({
+        complaintNumber: c.complaintNumber,
+        title: c.title,
+        categoryName: c.categoryName || '',
+        departmentName: c.departmentName || '',
+        location: c.location,
+        severity: c.severity,
+        status: c.status,
+        submittedByName: c.submittedByName || '',
+        assignedToName: c.assignedToName || '',
+        createdAt: fmt(c.createdAt),
+        resolvedAt: fmt(c.resolvedAt),
+        completedAt: fmt(c.completedAt),
+        isSlaBreached: c.isSlaBreached ? 'Yes' : 'No',
+        rating: c.rating != null ? c.rating : '',
+        ratingComment: c.ratingComment || ''
+      });
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="complaints-${stamp}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
     next(error);
   }
@@ -507,6 +608,186 @@ router.patch('/:id/assign', requireRole('ROLE_ADMIN', 'ROLE_DEPT_HEAD'), validat
 });
 
 /**
+ * POST /api/complaints/:id/resolve
+ * Staff submits proof-of-resolution (photos/videos + notes). Moves the ticket to
+ * RESOLVED and hands it to the admin for verification. Only the assigned staff may
+ * call this, and only while the ticket is ASSIGNED or IN_PROGRESS.
+ */
+router.post('/:id/resolve', upload.array('media', 5), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const complaint = await prisma.complaint.findUnique({ where: { id } });
+    if (!complaint) {
+      return sendError(res, 404, 'Complaint not found.');
+    }
+
+    const isAssigned = complaint.assignedToId === req.user.id;
+    if (!isAssigned) {
+      return sendError(res, 403, 'Forbidden: Only the assigned staff member can submit a resolution.');
+    }
+
+    if (!['ASSIGNED', 'IN_PROGRESS'].includes(complaint.status)) {
+      return sendError(res, 400, `Bad Request: Cannot submit a resolution while the ticket is ${complaint.status}.`);
+    }
+
+    const files = req.files || [];
+    if (files.length === 0) {
+      return sendError(res, 400, 'Bad Request: At least one proof photo/video is required to resolve.');
+    }
+
+    // Validate file sizes (mirrors the create endpoint)
+    for (const file of files) {
+      const isImage = file.mimetype.startsWith('image/');
+      const isVideo = file.mimetype.startsWith('video/');
+      if (isImage && file.size > 10 * 1024 * 1024) {
+        return sendError(res, 400, `Bad Request: Image ${file.originalname} exceeds the 10MB limit.`);
+      }
+      if (isVideo && file.size > 100 * 1024 * 1024) {
+        return sendError(res, 400, `Bad Request: Video ${file.originalname} exceeds the 100MB limit.`);
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // Store the proof media, tagged so the admin review can isolate them.
+      await tx.mediaItem.createMany({
+        data: files.map((file) => ({
+          complaintId: id,
+          url: getMediaUrl(file.filename),
+          mediaType: file.mimetype.startsWith('image/') ? 'IMAGE' : 'VIDEO',
+          purpose: 'PROOF',
+          gpsLatitude: 0.0,
+          gpsLongitude: 0.0,
+          gpsPlaceName: 'Resolution Proof',
+          capturedAt: new Date(),
+          fileSizeBytes: file.size,
+          isWatermarked: true
+        }))
+      });
+
+      const updatedRecord = await tx.complaint.update({
+        where: { id },
+        data: { status: 'RESOLVED', resolvedAt: new Date() }
+      });
+
+      await tx.complaintUpdate.create({
+        data: {
+          complaintId: id,
+          updatedById: req.user.id,
+          updatedByName: req.user.email,
+          updatedByRole: req.user.role,
+          previousStatus: complaint.status,
+          newStatus: 'RESOLVED',
+          notes: notes || 'Staff submitted proof of resolution. Awaiting admin verification.'
+        }
+      });
+
+      return updatedRecord;
+    });
+
+    // Notify all admins that a resolution is awaiting their verification.
+    const admins = await prisma.user.findMany({
+      where: { role: 'ROLE_ADMIN', fcmToken: { not: null } }
+    });
+    for (const adm of admins) {
+      sendPushNotification(
+        adm.fcmToken,
+        'Resolution Submitted',
+        `Proof submitted for ${complaint.complaintNumber}. Please verify.`,
+        { complaintId: id, type: 'RESOLUTION_REVIEW' }
+      ).catch((err) => logger.error(`FCM admin dispatch failed: ${err.message}`));
+    }
+
+    return sendSuccess(res, updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/complaints/:id/verify-resolution
+ * Admin reviews the staff proof and either APPROVEs (-> COMPLETED, submitter is
+ * asked to rate) or sends it back for REDO (-> IN_PROGRESS, same staff re-notified).
+ * Only valid while the ticket is RESOLVED.
+ */
+router.post('/:id/verify-resolution', requireRole('ROLE_ADMIN', 'ROLE_DEPT_HEAD'), validateBody(verifyResolutionSchema), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { decision, notes } = req.body;
+
+    const complaint = await prisma.complaint.findUnique({
+      where: { id },
+      include: { submittedBy: true }
+    });
+    if (!complaint) {
+      return sendError(res, 404, 'Complaint not found.');
+    }
+
+    if (complaint.status !== 'RESOLVED') {
+      return sendError(res, 400, 'Bad Request: Only a RESOLVED complaint awaiting verification can be reviewed.');
+    }
+
+    const approve = decision === 'APPROVE';
+    const newStatus = approve ? 'COMPLETED' : 'IN_PROGRESS';
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedRecord = await tx.complaint.update({
+        where: { id },
+        data: approve
+          ? { status: 'COMPLETED', completedAt: new Date() }
+          : { status: 'IN_PROGRESS' }
+      });
+
+      await tx.complaintUpdate.create({
+        data: {
+          complaintId: id,
+          updatedById: req.user.id,
+          updatedByName: req.user.email,
+          updatedByRole: req.user.role,
+          previousStatus: 'RESOLVED',
+          newStatus,
+          notes: notes || (approve
+            ? 'Admin verified the resolution. Complaint completed.'
+            : 'Admin sent the resolution back for rework.')
+        }
+      });
+
+      return updatedRecord;
+    });
+
+    if (approve) {
+      // Ask the submitter to rate.
+      if (complaint.submittedBy && complaint.submittedBy.fcmToken) {
+        sendPushNotification(
+          complaint.submittedBy.fcmToken,
+          'Complaint Completed',
+          `Your complaint "${complaint.title}" has been resolved. Please leave a rating.`,
+          { complaintId: id, type: 'STATUS_UPDATE' }
+        ).catch((err) => logger.error(`FCM submitter dispatch failed: ${err.message}`));
+      }
+    } else {
+      // Tell the same staff member to redo the work.
+      if (complaint.assignedToId) {
+        const staff = await prisma.user.findUnique({ where: { id: complaint.assignedToId } });
+        if (staff && staff.fcmToken) {
+          sendPushNotification(
+            staff.fcmToken,
+            'Resolution Needs Rework',
+            `${complaint.complaintNumber} was sent back for rework.`,
+            { complaintId: id, type: 'ASSIGNED' }
+          ).catch((err) => logger.error(`FCM staff dispatch failed: ${err.message}`));
+        }
+      }
+    }
+
+    return sendSuccess(res, updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * POST /api/complaints/:id/rating
  * Rate and close a resolved complaint (only accessible by ticket owner)
  */
@@ -527,8 +808,9 @@ router.post('/:id/rating', validateBody(ratingSchema), async (req, res, next) =>
       return sendError(res, 403, 'Forbidden: Only the submitter can rate the complaint resolution.');
     }
 
-    if (complaint.status !== 'RESOLVED') {
-      return sendError(res, 400, 'Bad Request: Complaint must be in RESOLVED status to submit rating.');
+    // Rating happens after the admin has verified the resolution (COMPLETED).
+    if (complaint.status !== 'COMPLETED') {
+      return sendError(res, 400, 'Bad Request: Complaint must be in COMPLETED status to submit rating.');
     }
 
     const updated = await prisma.$transaction(async (tx) => {
@@ -547,7 +829,7 @@ router.post('/:id/rating', validateBody(ratingSchema), async (req, res, next) =>
           updatedById: req.user.id,
           updatedByName: req.user.email,
           updatedByRole: req.user.role,
-          previousStatus: 'RESOLVED',
+          previousStatus: 'COMPLETED',
           newStatus: 'CLOSED',
           notes: `User submitted a rating of ${rating}/5 stars.`
         }

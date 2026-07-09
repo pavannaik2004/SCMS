@@ -112,6 +112,8 @@ class AppColors {
       case 'IN_PROGRESS':
         return statusInProgress;
       case 'RESOLVED':
+        return statusInProgress;
+      case 'COMPLETED':
         return statusResolved;
       case 'CLOSED':
         return statusClosed;

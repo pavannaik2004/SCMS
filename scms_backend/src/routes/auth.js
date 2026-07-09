@@ -137,6 +137,41 @@ router.post('/google', validateBody(googleLoginSchema), async (req, res, next) =
 });
 
 /**
+ * GET /api/auth/dev-users
+ * DEVELOPMENT ONLY. Lists the seeded demo users so the Flutter dev-login screen
+ * can offer a "pick which student/staff/SR" chooser. Never reachable in prod.
+ */
+router.get('/dev-users', async (req, res, next) => {
+  try {
+    if (process.env.NODE_ENV !== 'development') {
+      return sendError(res, 403, 'Forbidden: dev-users is only available in development.');
+    }
+
+    const users = await prisma.user.findMany({
+      where: { email: { endsWith: '@rvce.edu.in' } },
+      select: { id: true, name: true, email: true, role: true, departmentId: true, picture: true },
+      orderBy: [{ role: 'asc' }, { name: 'asc' }]
+    });
+
+    // Attach a human-readable department name for staff.
+    const deptIds = [...new Set(users.map((u) => u.departmentId).filter(Boolean))];
+    const depts = deptIds.length
+      ? await prisma.department.findMany({ where: { id: { in: deptIds } }, select: { id: true, name: true } })
+      : [];
+    const deptMap = Object.fromEntries(depts.map((d) => [d.id, d.name]));
+
+    const enriched = users.map((u) => ({
+      ...u,
+      departmentName: u.departmentId ? deptMap[u.departmentId] || null : null
+    }));
+
+    return sendSuccess(res, { users: enriched });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * POST /api/auth/refresh
  * Rotates access token using a valid refresh token
  */

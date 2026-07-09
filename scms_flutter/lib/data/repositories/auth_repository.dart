@@ -40,18 +40,18 @@ class AuthRepository {
     }
   }
 
-  /// Sign in with mock user (bypass for development/web preview)
-  Future<UserModel> signInWithMock(String role) async {
-    final user = UserModel(
-      id: 'mock_${role.toLowerCase()}',
-      name: 'Demo ${role.replaceAll('ROLE_', '')}',
-      email: 'demo.${role.replaceAll('ROLE_', '').toLowerCase()}@rvce.edu.in',
-      role: role,
-      departmentId: 'dept_mca',
-      departmentName: 'MCA Department',
-      createdAt: DateTime.now(),
+  /// Fetch the seeded demo accounts for the development-login picker.
+  Future<List<DevUser>> getDevUsers() => _remoteDataSource.getDevUsers();
+
+  /// Sign in as a specific seeded demo user (development bypass).
+  /// The id-based mock token lets the backend resolve the real seeded account,
+  /// so [getMe] returns that user's true name/role/department.
+  Future<UserModel> signInWithMock(String userId) async {
+    await _localDataSource.saveTokens(
+      'mock_access_token_ID_$userId',
+      'mock_refresh_token_ID_$userId',
     );
-    await _localDataSource.saveTokens('mock_access_token_$role', 'mock_refresh_token_$role');
+    final user = await _remoteDataSource.getMe();
     await _localDataSource.saveUser(user);
     return user;
   }

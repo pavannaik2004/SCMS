@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/datasources/remote/auth_remote_datasource.dart';
+import '../../../data/repositories/auth_repository.dart';
 import '../../bloc/auth/auth_bloc.dart';
 import '../../bloc/auth/auth_event.dart';
 import '../../bloc/auth/auth_state.dart';
@@ -148,13 +150,33 @@ class LoginPage extends StatelessWidget {
                       alignment: WrapAlignment.center,
                       children: [
                         _buildMockButton(
-                            context, 'Student', 'ROLE_USER', AppColors.systemBlue),
-                        _buildMockButton(context, 'SR (Rep)', 'ROLE_SR',
-                            AppColors.systemIndigo),
-                        _buildMockButton(context, 'Staff', 'ROLE_STAFF',
-                            AppColors.systemOrange),
+                          context,
+                          'Student',
+                          AppColors.systemBlue,
+                          () => _showUserPicker(context, 'ROLE_USER',
+                              'Select a Student', AppColors.systemBlue),
+                        ),
                         _buildMockButton(
-                            context, 'Admin', 'ROLE_ADMIN', AppColors.systemRed),
+                          context,
+                          'SR (Rep)',
+                          AppColors.systemIndigo,
+                          () => _showUserPicker(context, 'ROLE_SR',
+                              'Select a Student Representative',
+                              AppColors.systemIndigo),
+                        ),
+                        _buildMockButton(
+                          context,
+                          'Staff',
+                          AppColors.systemOrange,
+                          () => _showUserPicker(context, 'ROLE_STAFF',
+                              'Select a Staff Member', AppColors.systemOrange),
+                        ),
+                        _buildMockButton(
+                          context,
+                          'Admin',
+                          AppColors.systemRed,
+                          () => _signInAsAdmin(context),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -175,8 +197,8 @@ class LoginPage extends StatelessWidget {
   Widget _buildMockButton(
     BuildContext context,
     String label,
-    String role,
     Color color,
+    VoidCallback onPressed,
   ) {
     return ActionChip(
       avatar: Icon(Icons.account_circle_outlined, size: 16, color: color),
@@ -188,8 +210,113 @@ class LoginPage extends StatelessWidget {
       backgroundColor: color.withValues(alpha: 0.10),
       side: BorderSide.none,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-      onPressed: () {
-        context.read<AuthBloc>().add(MockSignInRequested(role: role));
+      onPressed: onPressed,
+    );
+  }
+
+  /// Admin: there's a single seeded admin, so sign in directly (falls back to a
+  /// picker if more than one exists).
+  Future<void> _signInAsAdmin(BuildContext context) async {
+    final repo = context.read<AuthRepository>();
+    final bloc = context.read<AuthBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final admins =
+          (await repo.getDevUsers()).where((u) => u.role == 'ROLE_ADMIN').toList();
+      if (admins.isEmpty) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('No demo admin found. Seed the demo data first.')));
+        return;
+      }
+      if (admins.length == 1) {
+        bloc.add(MockSignInRequested(userId: admins.first.id));
+      } else if (context.mounted) {
+        _showUserPicker(context, 'ROLE_ADMIN', 'Select an Admin', AppColors.systemRed);
+      }
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Failed to load demo users: $e')));
+    }
+  }
+
+  /// Opens a bottom sheet listing the seeded demo accounts for [role] so the
+  /// developer can pick exactly which person to sign in as.
+  void _showUserPicker(
+    BuildContext context,
+    String role,
+    String title,
+    Color color,
+  ) {
+    final repo = context.read<AuthRepository>();
+    final bloc = context.read<AuthBloc>();
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return FutureBuilder<List<DevUser>>(
+          future: repo.getDevUsers(),
+          builder: (ctx, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator.adaptive()),
+              );
+            }
+            if (snapshot.hasError) {
+              return SizedBox(
+                height: 200,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'Could not load demo users.\nIs the backend running in development mode?\n\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodySmall,
+                    ),
+                  ),
+                ),
+              );
+            }
+            final users =
+                (snapshot.data ?? []).where((u) => u.role == role).toList();
+            if (users.isEmpty) {
+              return const SizedBox(
+                height: 200,
+                child: Center(child: Text('No demo accounts found. Seed the demo data.')),
+              );
+            }
+            return SafeArea(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(bottom: 8),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                    child: Text(title, style: AppTextStyles.titleMedium),
+                  ),
+                  ...users.map(
+                    (u) => ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: color.withValues(alpha: 0.15),
+                        child: Text(
+                          u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
+                          style: TextStyle(
+                              color: color, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      title: Text(u.name),
+                      subtitle: Text(u.departmentName ?? u.email),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        bloc.add(MockSignInRequested(userId: u.id));
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
       },
     );
   }

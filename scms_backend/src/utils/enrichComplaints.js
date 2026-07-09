@@ -37,7 +37,11 @@ async function enrichComplaints(input) {
     c.departmentName = deptMap[c.departmentId] || null;
     c.submittedByName = c.submittedBy ? c.submittedBy.name : null;
     c.assignedToName = c.assignedToId ? userMap[c.assignedToId] || null : null;
-    c.photoUrls = Array.isArray(c.mediaItems) ? c.mediaItems.map((m) => m.url) : [];
+    const media = Array.isArray(c.mediaItems) ? c.mediaItems : [];
+    // Original submission photos (exclude staff resolution proof).
+    c.photoUrls = media.filter((m) => (m.purpose || 'ORIGINAL') !== 'PROOF').map((m) => m.url);
+    // Staff-uploaded resolution proof, surfaced separately for the admin review UI.
+    c.proofUrls = media.filter((m) => m.purpose === 'PROOF').map((m) => m.url);
   }
 
   return input;

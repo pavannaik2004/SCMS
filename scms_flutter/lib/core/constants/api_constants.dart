@@ -15,16 +15,21 @@ class ApiConstants {
   static const String authMe = '/auth/me';
   static const String authLogout = '/auth/logout';
   static const String authAllowedDomains = '/auth/allowed-domains';
+  static const String authDevUsers = '/auth/dev-users';
 
   // ─── Complaint Endpoints ──────────────────────────────────
   static const String complaints = '/complaints';
   static const String myComplaints = '/complaints/my';
   static const String complaintAiPreview = '/complaints/ai-preview';
 
+  static const String complaintsExport = '/complaints/export';
   static String complaintById(String id) => '/complaints/$id';
   static String complaintStatus(String id) => '/complaints/$id/status';
   static String complaintRating(String id) => '/complaints/$id/rating';
   static String complaintAssign(String id) => '/complaints/$id/assign';
+  static String complaintResolve(String id) => '/complaints/$id/resolve';
+  static String complaintVerifyResolution(String id) =>
+      '/complaints/$id/verify-resolution';
 
   // ─── SR Endpoints ─────────────────────────────────────────
   static const String srPendingReviews = '/sr/pending';

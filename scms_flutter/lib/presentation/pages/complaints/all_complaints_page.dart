@@ -63,6 +63,7 @@ class _AllComplaintsViewState extends State<_AllComplaintsView> {
     'ASSIGNED',
     'IN_PROGRESS',
     'RESOLVED',
+    'COMPLETED',
     'CLOSED',
     'REJECTED',
   ];

@@ -253,8 +253,8 @@ class _StaffDashboardPageState extends State<StaffDashboardPage> {
 							const SizedBox(width: 8),
 							FilledButton(
 								onPressed:
-										_selected.isEmpty ? null : () => _bulkUpdate('RESOLVED'),
-								child: const Text('Resolve'),
+										_selected.isEmpty ? null : _bulkResolveInfo,
+								child: const Text('Resolve…'),
 							),
 						],
 					),
@@ -287,6 +287,20 @@ class _StaffDashboardPageState extends State<StaffDashboardPage> {
 			SnackBar(content: Text('Updated $ok of ${ids.length} task(s).')),
 		);
 		context.read<ComplaintBloc>().add(RefreshComplaints());
+	}
+
+	/// Resolving requires photo proof, which is captured per-task on the detail
+	/// screen — so the bulk action just points the user there.
+	void _bulkResolveInfo() {
+		setState(() {
+			_selectionMode = false;
+			_selected.clear();
+		});
+		ScaffoldMessenger.of(context).showSnackBar(
+			const SnackBar(
+				content: Text('Open a task to submit its resolution with photo proof.'),
+			),
+		);
 	}
 
 	_StaffStats _buildStats(List<ComplaintModel> complaints) {

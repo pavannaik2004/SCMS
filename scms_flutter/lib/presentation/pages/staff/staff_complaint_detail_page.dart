@@ -17,8 +17,10 @@ import '../../widgets/common/error_widget.dart';
 import '../../widgets/common/loading_overlay.dart';
 import '../../widgets/common/scms_button.dart';
 import '../../widgets/common/scms_text_field.dart';
+import '../../widgets/complaint/media_capture_widget.dart';
 import '../../widgets/complaint/status_badge.dart';
 import '../../widgets/complaint/sla_timer_widget.dart';
+import 'dart:io';
 
 class StaffComplaintDetailPage extends StatefulWidget {
 	final String complaintId;
@@ -75,6 +77,7 @@ class _StaffComplaintDetailPageState extends State<StaffComplaintDetailPage> {
 
 					final options = _statusOptions(c.status);
 					final canUpdate = options.isNotEmpty;
+					final canResolve = ['ASSIGNED', 'IN_PROGRESS'].contains(c.status);
 
 					return LoadingOverlay(
 						isLoading: _isSaving,
@@ -112,36 +115,52 @@ class _StaffComplaintDetailPageState extends State<StaffComplaintDetailPage> {
 									const SizedBox(height: 16),
 									SlaTimerWidget(createdAt: c.createdAt, deadline: c.slaDeadline!),
 								],
-								const SizedBox(height: 24),
-								Text('Update Status', style: AppTextStyles.titleLarge),
-								const SizedBox(height: 12),
-								DropdownButtonFormField<String>(
-									value: options.contains(_selectedStatus) ? _selectedStatus : options.first,
-									decoration: const InputDecoration(labelText: 'Status'),
-									items: options
-											.map(
-												(status) => DropdownMenuItem(
-													value: status,
-													child: Text(status.toStatusLabel()),
-												),
-											)
-											.toList(),
-									onChanged: canUpdate
-											? (value) => setState(() => _selectedStatus = value)
-											: null,
-								),
-								const SizedBox(height: 12),
-								ScmsTextField(
-									label: 'Work Notes',
-									hint: 'Add update details for the timeline',
-									controller: _notesController,
-									maxLines: 3,
-								),
-								const SizedBox(height: 16),
-								ScmsButton(
-									label: 'Save Update',
-									onPressed: canUpdate ? () => _saveUpdate(c) : null,
-								),
+								if (canUpdate) ...[
+									const SizedBox(height: 24),
+									Text('Update Status', style: AppTextStyles.titleLarge),
+									const SizedBox(height: 12),
+									DropdownButtonFormField<String>(
+										value: options.contains(_selectedStatus) ? _selectedStatus : options.first,
+										decoration: const InputDecoration(labelText: 'Status'),
+										items: options
+												.map(
+													(status) => DropdownMenuItem(
+														value: status,
+														child: Text(status.toStatusLabel()),
+													),
+												)
+												.toList(),
+										onChanged: (value) => setState(() => _selectedStatus = value),
+									),
+									const SizedBox(height: 12),
+									ScmsTextField(
+										label: 'Work Notes',
+										hint: 'Add update details for the timeline',
+										controller: _notesController,
+										maxLines: 3,
+									),
+									const SizedBox(height: 16),
+									ScmsButton(
+										label: 'Save Update',
+										onPressed: () => _saveUpdate(c),
+									),
+								],
+								if (canResolve) ...[
+									const SizedBox(height: 24),
+									Text('Resolve Task', style: AppTextStyles.titleLarge),
+									const SizedBox(height: 6),
+									Text(
+										'Upload photo proof of the completed work. It will be sent to the admin for verification.',
+										style: AppTextStyles.bodySmall
+												.copyWith(color: AppColors.textSecondary),
+									),
+									const SizedBox(height: 12),
+									ScmsButton(
+										label: 'Submit Resolution with Proof',
+										icon: Icons.verified_outlined,
+										onPressed: () => _submitResolution(c),
+									),
+								],
 								if (c.updates.isNotEmpty) ...[
 									const SizedBox(height: 28),
 									Text('Activity Timeline', style: AppTextStyles.titleLarge),
@@ -156,12 +175,12 @@ class _StaffComplaintDetailPageState extends State<StaffComplaintDetailPage> {
 		);
 	}
 
+	// Only the ASSIGNED -> IN_PROGRESS step goes through the plain status update.
+	// Resolving now requires proof, handled by the dedicated Submit Resolution flow.
 	List<String> _statusOptions(String currentStatus) {
 		switch (currentStatus) {
 			case 'ASSIGNED':
-				return const ['IN_PROGRESS', 'RESOLVED'];
-			case 'IN_PROGRESS':
-				return const ['RESOLVED'];
+				return const ['IN_PROGRESS'];
 			default:
 				return const [];
 		}
@@ -193,6 +212,97 @@ class _StaffComplaintDetailPageState extends State<StaffComplaintDetailPage> {
 				const SnackBar(content: Text('Failed to update status.')),
 			);
 		} finally {
+			if (mounted) setState(() => _isSaving = false);
+		}
+	}
+
+	/// Opens a sheet to attach proof photos + notes, then submits the resolution.
+	Future<void> _submitResolution(ComplaintModel complaint) async {
+		final repo = context.read<ComplaintRepository>();
+		final bloc = context.read<ComplaintBloc>();
+		final photos = <File>[];
+		final notesController = TextEditingController();
+
+		final submitted = await showModalBottomSheet<bool>(
+			context: context,
+			isScrollControlled: true,
+			showDragHandle: true,
+			builder: (sheetContext) {
+				return Padding(
+					padding: EdgeInsets.only(
+						left: 16,
+						right: 16,
+						top: 8,
+						bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+					),
+					child: StatefulBuilder(
+						builder: (ctx, setSheetState) {
+							return Column(
+								mainAxisSize: MainAxisSize.min,
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+									Text('Submit Resolution', style: AppTextStyles.titleLarge),
+									const SizedBox(height: 4),
+									Text(
+										'Attach at least one photo showing the resolved issue.',
+										style: AppTextStyles.bodySmall
+												.copyWith(color: AppColors.textSecondary),
+									),
+									const SizedBox(height: 16),
+									MediaCaptureWidget(
+										photos: photos,
+										onPhotoAdded: (f) => setSheetState(() => photos.add(f)),
+										onPhotoRemoved: (i) => setSheetState(() => photos.removeAt(i)),
+									),
+									const SizedBox(height: 16),
+									ScmsTextField(
+										label: 'Resolution Notes (optional)',
+										hint: 'Describe what was done',
+										controller: notesController,
+										maxLines: 3,
+									),
+									const SizedBox(height: 16),
+									ScmsButton(
+										label: 'Submit for Verification',
+										onPressed: photos.isEmpty
+												? null
+												: () => Navigator.pop(sheetContext, true),
+									),
+									const SizedBox(height: 8),
+								],
+							);
+						},
+					),
+				);
+			},
+		);
+
+		if (submitted != true) {
+			notesController.dispose();
+			return;
+		}
+
+		setState(() => _isSaving = true);
+		try {
+			await repo.resolveWithProof(
+						complaint.id,
+						photoPaths: photos.map((f) => f.path).toList(),
+						notes: notesController.text.trim().isEmpty
+								? null
+								: notesController.text.trim(),
+					);
+			if (!mounted) return;
+			ScaffoldMessenger.of(context).showSnackBar(
+				const SnackBar(content: Text('Resolution submitted for admin verification.')),
+			);
+			bloc.add(LoadComplaintDetail(complaintId: complaint.id));
+		} catch (e) {
+			if (!mounted) return;
+			ScaffoldMessenger.of(context).showSnackBar(
+				SnackBar(content: Text('Failed to submit resolution: $e')),
+			);
+		} finally {
+			notesController.dispose();
 			if (mounted) setState(() => _isSaving = false);
 		}
 	}

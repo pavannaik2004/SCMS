@@ -26,6 +26,7 @@ class _AdminComplaintsListPageState extends State<AdminComplaintsListPage> {
 		'ASSIGNED',
 		'IN_PROGRESS',
 		'RESOLVED',
+		'COMPLETED',
 		'CLOSED',
 		'REJECTED',
 	];

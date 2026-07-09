@@ -51,6 +51,8 @@ model Complaint {
   isSlaBreached      Boolean   @default(false)
   rating             Float?
   ratingComment      String?
+  resolvedAt         DateTime?
+  completedAt        DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   submittedBy        User      @relation(fields: [submittedById], references: [id])
@@ -65,6 +67,7 @@ model MediaItem {
   complaintId   String
   url           String
   mediaType     String
+  purpose       String    @default("ORIGINAL")
   thumbnailUrl  String?
   gpsLatitude   Float
   gpsLongitude  Float

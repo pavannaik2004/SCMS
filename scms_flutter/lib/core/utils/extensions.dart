@@ -27,7 +27,9 @@ extension StringExtension on String {
       case 'IN_PROGRESS':
         return 'In Progress';
       case 'RESOLVED':
-        return 'Resolved ✓';
+        return 'Awaiting Verification';
+      case 'COMPLETED':
+        return 'Completed ✓';
       case 'CLOSED':
         return 'Closed';
       case 'REJECTED':

@@ -154,10 +154,10 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
                 state is MyComplaintsLoaded ? state.complaints : const [];
             final active = complaints
                 .where((c) =>
-                    !['RESOLVED', 'CLOSED', 'REJECTED'].contains(c.status))
+                    !['RESOLVED', 'COMPLETED', 'CLOSED', 'REJECTED'].contains(c.status))
                 .length;
             final resolved = complaints
-                .where((c) => c.status == 'RESOLVED' || c.status == 'CLOSED')
+                .where((c) => ['RESOLVED', 'COMPLETED', 'CLOSED'].contains(c.status))
                 .length;
             return DashboardHero(
               greeting: DateFormatter.greeting(),

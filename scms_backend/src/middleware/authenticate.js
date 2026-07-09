@@ -22,21 +22,29 @@ const authenticate = async (req, res, next) => {
     }
 
     try {
-      let user = await prisma.user.findUnique({
-        where: { email: decoded.email }
-      });
+      let user;
 
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            id: decoded.userId,
-            googleId: `google_${decoded.userId}`,
-            email: decoded.email,
-            name: `Demo ${decoded.role.replace('ROLE_', '')}`,
-            role: decoded.role,
-            isApproved: true
-          }
-        });
+      if (decoded.byId) {
+        // Id-based mock token: sign in as a specific seeded demo user.
+        user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+        if (!user) {
+          return sendError(res, 401, 'Unauthorized: Mock user not found. Run the demo seed (node prisma/seed_sample_data.js).');
+        }
+      } else {
+        // Legacy role-based mock token: look up (or auto-provision) a generic user.
+        user = await prisma.user.findUnique({ where: { email: decoded.email } });
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              id: decoded.userId,
+              googleId: `google_${decoded.userId}`,
+              email: decoded.email,
+              name: `Demo ${decoded.role.replace('ROLE_', '')}`,
+              role: decoded.role,
+              isApproved: true
+            }
+          });
+        }
       }
 
       req.user = {

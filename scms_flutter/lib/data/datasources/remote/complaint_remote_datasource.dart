@@ -20,6 +20,21 @@ class ComplaintRemoteDataSource {
   ComplaintRemoteDataSource({required DioClient dioClient})
       : _dioClient = dioClient;
 
+  /// Extracts the real server error message. The backend error envelope is
+  /// `{ success:false, error:{ message, code, details } }` and, unlike success
+  /// responses, is NOT unwrapped on the error path — so the message lives under
+  /// `error.message`, not `message`. Reading the wrong key here is exactly what
+  /// masked real submit failures behind a generic "Failed to..." string.
+  String _errMessage(DioException e, String fallback) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final err = data['error'];
+      if (err is Map && err['message'] is String) return err['message'] as String;
+      if (data['message'] is String) return data['message'] as String;
+    }
+    return fallback;
+  }
+
   /// Parses a complaint list response. After the Dio unwrap interceptor strips
   /// the `{success, data}` envelope, list endpoints return either a raw list or
   /// a paginated object `{ complaints: [...], pagination: {...} }`.
@@ -121,7 +136,86 @@ class ComplaintRemoteDataSource {
       return ComplaintModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ServerException(
-        message: e.response?.data?['message'] ?? 'Failed to submit complaint',
+        message: _errMessage(e, 'Failed to submit complaint'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// Staff submits proof-of-resolution (photos/videos + optional notes).
+  /// Multipart, field `media` (multer upload.array('media', 5)).
+  Future<void> resolveWithProof(
+    String id, {
+    required List<String> photoPaths,
+    String? notes,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+      });
+      for (final path in photoPaths) {
+        formData.files.add(MapEntry('media', await MultipartFile.fromFile(path)));
+      }
+      await _dioClient.dio.post(
+        ApiConstants.complaintResolve(id),
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+    } on DioException catch (e) {
+      throw ServerException(
+        message: _errMessage(e, 'Failed to submit resolution'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// Admin verifies a staff resolution: decision `APPROVE` (-> COMPLETED) or
+  /// `REDO` (-> IN_PROGRESS, sent back to the same staff).
+  Future<void> verifyResolution(
+    String id, {
+    required String decision,
+    String? notes,
+  }) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.complaintVerifyResolution(id),
+        data: {'decision': decision, if (notes != null && notes.isNotEmpty) 'notes': notes},
+      );
+    } on DioException catch (e) {
+      throw ServerException(
+        message: _errMessage(e, 'Failed to verify resolution'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// Admin-only: download the complaints Excel export (.xlsx) as raw bytes,
+  /// applying the given filters. Returns the file bytes for the app to save.
+  Future<List<int>> exportComplaintsXlsx({
+    String? status,
+    String? departmentId,
+    String? categoryId,
+    String? severity,
+    String? from,
+    String? to,
+  }) async {
+    try {
+      final response = await _dioClient.dio.get<List<int>>(
+        ApiConstants.complaintsExport,
+        queryParameters: {
+          if (status != null) 'status': status,
+          if (departmentId != null) 'departmentId': departmentId,
+          if (categoryId != null) 'categoryId': categoryId,
+          if (severity != null) 'severity': severity,
+          if (from != null) 'from': from,
+          if (to != null) 'to': to,
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? <int>[];
+    } on DioException catch (e) {
+      throw ServerException(
+        message: _errMessage(e, 'Failed to export complaints'),
         statusCode: e.response?.statusCode,
       );
     }

@@ -23,6 +23,7 @@ class ComplaintModel {
   final String? reviewedBySrId;
   final String? srRejectionCause;
   final List<String> photoUrls;
+  final List<String> proofUrls;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? slaDeadline;
@@ -58,6 +59,7 @@ class ComplaintModel {
     this.reviewedBySrId,
     this.srRejectionCause,
     this.photoUrls = const [],
+    this.proofUrls = const [],
     required this.createdAt,
     required this.updatedAt,
     this.slaDeadline,
@@ -96,7 +98,14 @@ class ComplaintModel {
       srRejectionCause: json['srRejectionCause'] as String?,
       photoUrls: (json['photoUrls'] as List<dynamic>?)?.cast<String>() ??
           (json['mediaItems'] as List<dynamic>?)
-              ?.map((m) => m['url'] as String)
+              ?.where((m) => (m['purpose'] as String? ?? 'ORIGINAL') != 'PROOF')
+              .map((m) => m['url'] as String)
+              .toList() ??
+          [],
+      proofUrls: (json['proofUrls'] as List<dynamic>?)?.cast<String>() ??
+          (json['mediaItems'] as List<dynamic>?)
+              ?.where((m) => (m['purpose'] as String?) == 'PROOF')
+              .map((m) => m['url'] as String)
               .toList() ??
           [],
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -142,6 +151,7 @@ class ComplaintModel {
       'reviewedBySrId': reviewedBySrId,
       'srRejectionCause': srRejectionCause,
       'photoUrls': photoUrls,
+      'proofUrls': proofUrls,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'slaDeadline': slaDeadline?.toIso8601String(),
@@ -188,6 +198,7 @@ class ComplaintModel {
       reviewedBySrId: reviewedBySrId,
       srRejectionCause: srRejectionCause,
       photoUrls: photoUrls,
+      proofUrls: proofUrls,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
       slaDeadline: slaDeadline,
@@ -202,12 +213,15 @@ class ComplaintModel {
     );
   }
 
-  /// Whether the complaint can be rated
-  bool get canRate => status == 'RESOLVED' && rating == null;
+  /// Whether the complaint can be rated (after admin verification -> COMPLETED)
+  bool get canRate => status == 'COMPLETED' && rating == null;
+
+  /// Whether the staff-submitted resolution is awaiting admin verification
+  bool get isAwaitingVerification => status == 'RESOLVED';
 
   /// Whether SLA is active (not breached yet, complaint is open)
   bool get isSlaActive =>
       slaDeadline != null &&
       !isSlaBreached &&
-      !['RESOLVED', 'CLOSED', 'REJECTED'].contains(status);
+      !['RESOLVED', 'COMPLETED', 'CLOSED', 'REJECTED'].contains(status);
 }

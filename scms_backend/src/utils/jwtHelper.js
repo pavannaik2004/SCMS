@@ -29,6 +29,16 @@ const signRefreshToken = (payload) => {
  */
 const verifyToken = (token) => {
   if (typeof token === 'string' && token.startsWith('mock_') && process.env.NODE_ENV === 'development') {
+    // Preferred format: mock_access_token_ID_<userId> — signs in as a SPECIFIC
+    // seeded demo user. The role/email are resolved from the DB record in the
+    // authenticate middleware.
+    const idMatch = token.match(/_ID_(.+)$/);
+    if (idMatch) {
+      return { userId: idMatch[1], byId: true };
+    }
+
+    // Legacy format: mock_access_token_ROLE_<ROLE> — synthesizes a generic user
+    // for that role (kept for backward compatibility).
     let role = 'ROLE_USER';
     if (token.includes('_ROLE_')) {
       const match = token.match(/_ROLE_(\w+)$/);

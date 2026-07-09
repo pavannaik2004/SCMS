@@ -21,7 +21,7 @@ class MyComplaintsPage extends StatefulWidget {
 
 class _MyComplaintsPageState extends State<MyComplaintsPage> {
   String? _activeFilter;
-  final _filters = const ['All', 'PENDING_SR_REVIEW', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+  final _filters = const ['All', 'PENDING_SR_REVIEW', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'COMPLETED', 'CLOSED'];
 
   @override
   void initState() {
