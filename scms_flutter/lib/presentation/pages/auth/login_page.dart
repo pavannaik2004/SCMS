@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/constants/api_constants.dart';
+import '../../../core/network/server_url_override.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/datasources/remote/auth_remote_datasource.dart';
@@ -179,7 +181,20 @@ class LoginPage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
+                    // Lets testers point the app at a backend (LAN IP / tunnel)
+                    // before signing in — the dev bypass buttons above call the
+                    // backend, so this must be reachable without logging in.
+                    TextButton.icon(
+                      onPressed: () => _showServerUrlDialog(context),
+                      icon: Icon(Icons.dns_rounded, size: 16, color: secondary),
+                      label: Text(
+                        'Configure server URL',
+                        style:
+                            AppTextStyles.bodySmall.copyWith(color: secondary),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Text(
                       'RVCE Campus App • MCA Project',
                       style: AppTextStyles.caption.copyWith(color: secondary),
@@ -211,6 +226,73 @@ class LoginPage extends StatelessWidget {
       side: BorderSide.none,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
       onPressed: onPressed,
+    );
+  }
+
+  /// Opens the server-URL override dialog so a tester can point the app at a
+  /// reachable backend (LAN IP / tunnel) before signing in. Mirrors the dialog
+  /// in the Settings page; the override is read per-request by [DioClient], so
+  /// the next dev-bypass call uses the new URL without an app restart.
+  Future<void> _showServerUrlDialog(BuildContext context) async {
+    final current = await ServerUrlOverride.get();
+    if (!context.mounted) return;
+    final controller = TextEditingController(text: current ?? '');
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Server URL'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Point the app at your backend before signing in.\n'
+              'e.g. 192.168.1.104:3000 (scheme optional, defaults to http://)',
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.url,
+              decoration: InputDecoration(
+                hintText: ApiConstants.baseUrl,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, ''),
+            child: const Text('Reset to default'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null) return; // cancelled
+
+    await ServerUrlOverride.set(result.isEmpty ? null : result);
+    final saved = await ServerUrlOverride.get();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          saved == null
+              ? 'Reset to default server (${ApiConstants.baseUrl}).'
+              : 'Server URL set to $saved.',
+        ),
+      ),
     );
   }
 
