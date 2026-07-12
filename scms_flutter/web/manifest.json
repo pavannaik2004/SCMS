@@ -1,6 +1,6 @@
 {
-    "name": "scms_flutter",
-    "short_name": "scms_flutter",
+    "name": "SCMS",
+    "short_name": "SCMS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
