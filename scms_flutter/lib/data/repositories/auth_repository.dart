@@ -56,6 +56,29 @@ class AuthRepository {
     return user;
   }
 
+  /// Offline development bypass — signs in WITHOUT contacting the backend.
+  /// Mints a role-based mock token and builds a local placeholder user so a
+  /// tester can enter the app (e.g. to set the Server URL in Settings) before
+  /// any server is reachable. Once the URL points at a running dev backend, the
+  /// `mock_..._ROLE_<ROLE>` token is accepted and auto-provisions a demo user
+  /// matching this placeholder's id/email (see backend authenticate.js).
+  Future<UserModel> signInWithMockOffline(String role) async {
+    final suffix = role.replaceFirst('ROLE_', '');
+    await _localDataSource.saveTokens(
+      'mock_access_token_ROLE_$suffix',
+      'mock_refresh_token_ROLE_$suffix',
+    );
+    final user = UserModel(
+      id: 'mock_${role.toLowerCase()}',
+      name: 'Demo $suffix',
+      email: 'demo.${suffix.toLowerCase()}@rvce.edu.in',
+      role: role,
+      createdAt: DateTime.now(),
+    );
+    await _localDataSource.saveUser(user);
+    return user;
+  }
+
   /// Check if user is already authenticated (app start)
   Future<UserModel?> checkAuthStatus() async {
     final hasToken = await _localDataSource.hasToken();

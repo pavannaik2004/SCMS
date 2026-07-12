@@ -568,3 +568,11 @@ uvicorn main:app --reload --port 8000
 *• **Submit bug**: the datasource read the wrong error key (`data['message']` vs the envelope's `error.message`), masking real submit failures behind the generic "Failed to submit" string — fixed with a shared `_errMessage` extractor so the true server error surfaces. (Confirm the actual submit end-to-end during on-device verification.)*
 *• `flutter analyze`: **No issues found.***
 *### PENDING VERIFICATION (needs a running stack): `npx prisma migrate dev`, `npm install` (exceljs), re-seed, then walk the happy path + rework loop + reject + export on-device. NODE_ENV must be `development` for the dev-login picker + mock tokens.*
+
+---
+*### 2026-07-12 — Dev-access, offline bypass, dashboards & SR naming (Pavan)*
+*• **App name**: pubspec `name` reverted to `scms_flutter` (a `SCMS` rename broke `flutter analyze` — package names must be lower_snake); visible app name set to **SCMS** via `android:label`, `web/manifest.json`, `web/index.html`.*
+*• **Login page (`login_page.dart`)**: now a `StatefulWidget`. Added a **"Configure server URL"** button (reuses the Settings dialog) so testers can point at a backend BEFORE login. Added an **"Offline (no server)"** toggle: when ON, role buttons fire `OfflineMockSignInRequested(role)` → `signInWithMockOffline` mints a `mock_access_token_ROLE_<ROLE>` token + a local placeholder user with NO backend call, so you can reach Settings when nothing is reachable (data loads once a URL is set). Toggle OFF = unchanged online picker flow.*
+*• **Admin dashboard**: added `RefreshIndicator` (+ `AlwaysScrollableScrollPhysics`) → `AnalyticsCubit.loadSummary()`. The student/SR/staff dashboards already had pull-to-refresh; admin was the only one missing it.*
+*• **SR demo names simplified** (`seed_sample_data.js` + live DB `updateMany`): the 3 SRs are now **`1st Year SR` / `2nd Year SR` / `3rd Year SR`** (were `Vikram Singh (First Year SR)` etc.). ids/emails unchanged. (A stray `mock_role_sr`/`Demo SR` auto-provisioned user exists from offline-bypass testing — harmless.)*
+*• `flutter analyze`: **No issues found.** Not yet driven on-device.*

@@ -44,9 +44,9 @@ async function main() {
   ].map((u) => ({ ...u, role: 'ROLE_STAFF', departmentId: deptByCode[u.deptCode] ? deptByCode[u.deptCode].id : null }));
 
   const srs = [
-    { id: 'demo-sr-first', name: 'Vikram Singh (First Year SR)', email: 'vikram.sr1@rvce.edu.in' },
-    { id: 'demo-sr-second', name: 'Priya Menon (Second Year SR)', email: 'priya.sr2@rvce.edu.in' },
-    { id: 'demo-sr-third', name: 'Arjun Pillai (Third Year SR)', email: 'arjun.sr3@rvce.edu.in' }
+    { id: 'demo-sr-first', name: '1st Year SR', email: 'vikram.sr1@rvce.edu.in' },
+    { id: 'demo-sr-second', name: '2nd Year SR', email: 'priya.sr2@rvce.edu.in' },
+    { id: 'demo-sr-third', name: '3rd Year SR', email: 'arjun.sr3@rvce.edu.in' }
   ].map((u) => ({ ...u, role: 'ROLE_SR' }));
 
   const admin = { id: 'demo-admin', name: 'Dr. Nagaraj Bhat', email: 'admin@rvce.edu.in', role: 'ROLE_ADMIN' };

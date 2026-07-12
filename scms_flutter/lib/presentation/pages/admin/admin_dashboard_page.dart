@@ -20,157 +20,160 @@ import '../../widgets/complaint/complaint_card.dart';
 import '../../widgets/dashboard/dashboard_hero.dart';
 
 class AdminDashboardPage extends StatefulWidget {
-	const AdminDashboardPage({super.key});
+  const AdminDashboardPage({super.key});
 
-	@override
-	State<AdminDashboardPage> createState() => _AdminDashboardPageState();
+  @override
+  State<AdminDashboardPage> createState() => _AdminDashboardPageState();
 }
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
-	@override
-	void initState() {
-		super.initState();
-		context.read<AnalyticsCubit>().loadSummary();
-	}
+  @override
+  void initState() {
+    super.initState();
+    context.read<AnalyticsCubit>().loadSummary();
+  }
 
-	@override
-	Widget build(BuildContext context) {
-		return AppScaffold(
-			body: BlocBuilder<AnalyticsCubit, AnalyticsState>(
-				builder: (context, state) {
-					if (state is AnalyticsLoading) {
-						return const Center(child: CircularProgressIndicator());
-					}
-					if (state is AnalyticsError) {
-						return ScmsErrorWidget(
-							message: state.message,
-							onRetry: () => context.read<AnalyticsCubit>().loadSummary(),
-						);
-					}
-					if (state is AnalyticsEmpty) {
-						return const EmptyStateWidget(
-							title: 'No analytics available',
-							subtitle: 'Data will appear after complaints are processed.',
-							icon: Icons.insights_rounded,
-						);
-					}
-					if (state is! AnalyticsLoaded) return const SizedBox.shrink();
+  @override
+  Widget build(BuildContext context) {
+    return AppScaffold(
+      body: BlocBuilder<AnalyticsCubit, AnalyticsState>(
+        builder: (context, state) {
+          if (state is AnalyticsLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state is AnalyticsError) {
+            return ScmsErrorWidget(
+              message: state.message,
+              onRetry: () => context.read<AnalyticsCubit>().loadSummary(),
+            );
+          }
+          if (state is AnalyticsEmpty) {
+            return const EmptyStateWidget(
+              title: 'No analytics available',
+              subtitle: 'Data will appear after complaints are processed.',
+              icon: Icons.insights_rounded,
+            );
+          }
+          if (state is! AnalyticsLoaded) return const SizedBox.shrink();
 
-					final analytics = state.analytics;
-					return CustomScrollView(
-						slivers: [
-							SliverToBoxAdapter(child: _buildHero(context, analytics)),
-							SliverToBoxAdapter(
-								child: Padding(
-									padding: const EdgeInsets.all(16),
-									child: Column(
-										crossAxisAlignment: CrossAxisAlignment.start,
-										children: [
-											_buildKpiRow(analytics),
-											const SizedBox(height: 24),
-											ComplaintsChart(
-												departments: analytics.byDepartment,
-												categories: analytics.byCategory,
-											),
-											const SizedBox(height: 8),
-											const SectionHeader(
-												title: 'Recent SLA Breaches',
-												padding: EdgeInsets.fromLTRB(0, 16, 0, 12),
-											),
-											if (analytics.recentSlaBreaches.isEmpty)
-												Text(
-													'No breaches in the last 7 days.',
-													style: AppTextStyles.bodySmall.copyWith(
-														color: AppColors.textSecondary,
-													),
-												)
-											else
-												ListView.builder(
-													shrinkWrap: true,
-													physics: const NeverScrollableScrollPhysics(),
-													itemCount: analytics.recentSlaBreaches.length,
-													itemBuilder: (context, index) {
-														return ComplaintCard(
-															complaint: analytics.recentSlaBreaches[index],
-														);
-													},
-												),
-										],
-									),
-								),
-							),
-						],
-					);
-				},
-			),
-		);
-	}
+          final analytics = state.analytics;
+          return RefreshIndicator(
+              onRefresh: () => context.read<AnalyticsCubit>().loadSummary(),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _buildHero(context, analytics)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildKpiRow(analytics),
+                          const SizedBox(height: 24),
+                          ComplaintsChart(
+                            departments: analytics.byDepartment,
+                            categories: analytics.byCategory,
+                          ),
+                          const SizedBox(height: 8),
+                          const SectionHeader(
+                            title: 'Recent SLA Breaches',
+                            padding: EdgeInsets.fromLTRB(0, 16, 0, 12),
+                          ),
+                          if (analytics.recentSlaBreaches.isEmpty)
+                            Text(
+                              'No breaches in the last 7 days.',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            )
+                          else
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: analytics.recentSlaBreaches.length,
+                              itemBuilder: (context, index) {
+                                return ComplaintCard(
+                                  complaint: analytics.recentSlaBreaches[index],
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ));
+        },
+      ),
+    );
+  }
 
-	Widget _buildHero(BuildContext context, AnalyticsModel analytics) {
-		final authState = context.watch<AuthBloc>().state;
-		final user = authState is AuthAuthenticated ? authState.user : null;
-		final name = user?.name.split(' ').first ?? 'Admin';
-		return DashboardHero(
-			greeting: DateFormatter.greeting(),
-			name: name,
-			roleBadge: 'ADMIN',
-			avatarUrl: user?.picture,
-			stats: [
-				HeroStat(
-					label: 'Active',
-					value: '${analytics.totalActiveComplaints}',
-					icon: Icons.inbox_rounded,
-				),
-				HeroStat(
-					label: 'Breaches 7d',
-					value: '${analytics.slaBreachesLast7Days}',
-					icon: Icons.warning_amber_rounded,
-				),
-				HeroStat(
-					label: 'Resolved',
-					value: analytics.resolutionRatePercent.toPercentString(),
-					icon: Icons.trending_up_rounded,
-				),
-			],
-		);
-	}
+  Widget _buildHero(BuildContext context, AnalyticsModel analytics) {
+    final authState = context.watch<AuthBloc>().state;
+    final user = authState is AuthAuthenticated ? authState.user : null;
+    final name = user?.name.split(' ').first ?? 'Admin';
+    return DashboardHero(
+      greeting: DateFormatter.greeting(),
+      name: name,
+      roleBadge: 'ADMIN',
+      avatarUrl: user?.picture,
+      stats: [
+        HeroStat(
+          label: 'Active',
+          value: '${analytics.totalActiveComplaints}',
+          icon: Icons.inbox_rounded,
+        ),
+        HeroStat(
+          label: 'Breaches 7d',
+          value: '${analytics.slaBreachesLast7Days}',
+          icon: Icons.warning_amber_rounded,
+        ),
+        HeroStat(
+          label: 'Resolved',
+          value: analytics.resolutionRatePercent.toPercentString(),
+          icon: Icons.trending_up_rounded,
+        ),
+      ],
+    );
+  }
 
-	Widget _buildKpiRow(AnalyticsModel analytics) {
-		return SizedBox(
-			height: 140,
-			child: ListView(
-				scrollDirection: Axis.horizontal,
-				children: [
-					StatsCard(
-						title: 'Total Active',
-						value: '${analytics.totalActiveComplaints}',
-						subtitle: 'Open + In Progress',
-						icon: Icons.inbox_rounded,
-						accentColor: AppColors.primary,
-					),
-					StatsCard(
-						title: 'SLA Breaches (7d)',
-						value: '${analytics.slaBreachesLast7Days}',
-						subtitle: 'Needs attention',
-						icon: Icons.warning_amber_rounded,
-						accentColor: AppColors.severityHigh,
-					),
-					StatsCard(
-						title: 'Avg Resolution',
-						value: analytics.avgResolutionTimeHours.toHoursDuration(),
-						subtitle: 'Across all depts',
-						icon: Icons.timer_rounded,
-						accentColor: AppColors.severityMedium,
-					),
-					StatsCard(
-						title: 'Resolution Rate',
-						value: analytics.resolutionRatePercent.toPercentString(),
-						subtitle: 'Last 30 days',
-						icon: Icons.trending_up_rounded,
-						accentColor: AppColors.accent,
-					),
-				],
-			),
-		);
-	}
+  Widget _buildKpiRow(AnalyticsModel analytics) {
+    return SizedBox(
+      height: 140,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          StatsCard(
+            title: 'Total Active',
+            value: '${analytics.totalActiveComplaints}',
+            subtitle: 'Open + In Progress',
+            icon: Icons.inbox_rounded,
+            accentColor: AppColors.primary,
+          ),
+          StatsCard(
+            title: 'SLA Breaches (7d)',
+            value: '${analytics.slaBreachesLast7Days}',
+            subtitle: 'Needs attention',
+            icon: Icons.warning_amber_rounded,
+            accentColor: AppColors.severityHigh,
+          ),
+          StatsCard(
+            title: 'Avg Resolution',
+            value: analytics.avgResolutionTimeHours.toHoursDuration(),
+            subtitle: 'Across all depts',
+            icon: Icons.timer_rounded,
+            accentColor: AppColors.severityMedium,
+          ),
+          StatsCard(
+            title: 'Resolution Rate',
+            value: analytics.resolutionRatePercent.toPercentString(),
+            subtitle: 'Last 30 days',
+            icon: Icons.trending_up_rounded,
+            accentColor: AppColors.accent,
+          ),
+        ],
+      ),
+    );
+  }
 }

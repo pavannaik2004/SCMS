@@ -14,6 +14,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AppStarted>(_onAppStarted);
     on<GoogleSignInRequested>(_onGoogleSignIn);
     on<MockSignInRequested>(_onMockSignIn);
+    on<OfflineMockSignInRequested>(_onOfflineMockSignIn);
     on<LogoutRequested>(_onLogout);
   }
 
@@ -60,6 +61,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthAuthenticated(user: user));
     } catch (e) {
       emit(AuthFailure(message: 'Mock sign-in failed: $e'));
+    }
+  }
+
+  Future<void> _onOfflineMockSignIn(
+      OfflineMockSignInRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final user = await _authRepository.signInWithMockOffline(event.role);
+      await _authRepository.setOnboardingComplete();
+      emit(AuthAuthenticated(user: user));
+    } catch (e) {
+      emit(AuthFailure(message: 'Offline bypass failed: $e'));
     }
   }
 

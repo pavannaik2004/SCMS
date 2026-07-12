@@ -12,8 +12,17 @@ import '../../bloc/auth/auth_event.dart';
 import '../../bloc/auth/auth_state.dart';
 import '../../widgets/common/scms_button.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  /// When true, the role buttons enter the app WITHOUT any backend call
+  /// (no picker, no token exchange) so the server URL can be set from Settings.
+  bool _offline = false;
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +154,9 @@ class LoginPage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    _buildOfflineToggle(secondary),
+                    const SizedBox(height: 16),
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
@@ -155,14 +166,14 @@ class LoginPage extends StatelessWidget {
                           context,
                           'Student',
                           AppColors.systemBlue,
-                          () => _showUserPicker(context, 'ROLE_USER',
+                          () => _onRoleTap(context, 'ROLE_USER',
                               'Select a Student', AppColors.systemBlue),
                         ),
                         _buildMockButton(
                           context,
                           'SR (Rep)',
                           AppColors.systemIndigo,
-                          () => _showUserPicker(context, 'ROLE_SR',
+                          () => _onRoleTap(context, 'ROLE_SR',
                               'Select a Student Representative',
                               AppColors.systemIndigo),
                         ),
@@ -170,14 +181,15 @@ class LoginPage extends StatelessWidget {
                           context,
                           'Staff',
                           AppColors.systemOrange,
-                          () => _showUserPicker(context, 'ROLE_STAFF',
+                          () => _onRoleTap(context, 'ROLE_STAFF',
                               'Select a Staff Member', AppColors.systemOrange),
                         ),
                         _buildMockButton(
                           context,
                           'Admin',
                           AppColors.systemRed,
-                          () => _signInAsAdmin(context),
+                          () => _onRoleTap(context, 'ROLE_ADMIN',
+                              'Select an Admin', AppColors.systemRed),
                         ),
                       ],
                     ),
@@ -207,6 +219,60 @@ class LoginPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Toggle that switches the dev-bypass buttons between the normal online
+  /// picker (needs the backend) and a fully offline entry (no server call).
+  Widget _buildOfflineToggle(Color secondary) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_rounded, size: 18, color: secondary),
+            const SizedBox(width: 8),
+            Text(
+              'Offline (no server)',
+              style: AppTextStyles.bodySmall.copyWith(color: secondary),
+            ),
+            Switch.adaptive(
+              value: _offline,
+              onChanged: (v) => setState(() => _offline = v),
+            ),
+          ],
+        ),
+        if (_offline)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              'Enters the app without contacting the backend so you can set the '
+              'Server URL in Settings. Data loads once a reachable server is set.',
+              style: AppTextStyles.caption.copyWith(color: secondary),
+              textAlign: TextAlign.center,
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Handles a dev-bypass role tap. In offline mode, enters the app directly
+  /// with no backend call; otherwise runs the normal online flow (admin signs
+  /// in directly, other roles open the seeded-user picker).
+  void _onRoleTap(
+    BuildContext context,
+    String role,
+    String pickerTitle,
+    Color color,
+  ) {
+    if (_offline) {
+      context.read<AuthBloc>().add(OfflineMockSignInRequested(role: role));
+      return;
+    }
+    if (role == 'ROLE_ADMIN') {
+      _signInAsAdmin(context);
+    } else {
+      _showUserPicker(context, role, pickerTitle, color);
+    }
   }
 
   Widget _buildMockButton(
