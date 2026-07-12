@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -17,6 +16,7 @@ import '../../bloc/complaint/complaint_bloc.dart';
 import '../../bloc/complaint/complaint_event.dart';
 import '../../bloc/complaint/complaint_state.dart';
 import '../../widgets/common/error_widget.dart';
+import '../../widgets/common/media_image.dart';
 import '../../widgets/common/scms_button.dart';
 import '../../widgets/complaint/sla_timer_widget.dart';
 import '../../widgets/complaint/status_badge.dart';
@@ -149,6 +149,13 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
                           ],
                         ),
                       ),
+                      if (c.photoUrls.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _Section(
+                          title: 'Attachments',
+                          child: _buildPhotoGallery(c.photoUrls),
+                        ),
+                      ],
                       if (c.tags.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _Section(
@@ -178,7 +185,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
                         const SizedBox(height: 12),
                         _Section(
                           title: 'Resolution Proof',
-                          child: _buildProofGallery(c.proofUrls),
+                          child: _buildPhotoGallery(c.proofUrls),
                         ),
                       ],
                       if (canVerify) ...[
@@ -423,9 +430,11 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
     }
   }
 
-  /// Horizontal gallery of proof photos. URLs are server-relative (/Storage/..)
-  /// so they are prefixed with the API base URL.
-  Widget _buildProofGallery(List<String> urls) {
+  /// Horizontal gallery of complaint media (submission photos or resolution
+  /// proof). URLs may be server-relative (/Storage/..) — [MediaImage] resolves
+  /// them against the effective backend base URL. Tapping opens a full-screen,
+  /// zoomable viewer.
+  Widget _buildPhotoGallery(List<String> urls) {
     return SizedBox(
       height: 120,
       child: ListView.separated(
@@ -433,25 +442,41 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage> {
         itemCount: urls.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
-          final url = urls[i].startsWith('http')
-              ? urls[i]
-              : '${ApiConstants.baseUrl}${urls[i]}';
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              url,
-              width: 120,
-              height: 120,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 120,
-                height: 120,
-                color: AppColors.surfaceVariant,
-                child: const Icon(Icons.broken_image_outlined),
-              ),
+          return GestureDetector(
+            onTap: () => _openPhotoViewer(urls[i]),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: MediaImage(url: urls[i], width: 120, height: 120),
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _openPhotoViewer(String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4,
+              child: MediaImage(
+                url: url,
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
